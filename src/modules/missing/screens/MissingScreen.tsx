@@ -3,7 +3,7 @@ import { View, Text, SectionList, StyleSheet, SafeAreaView } from 'react-native'
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { EmptyState } from '@shared/components/EmptyState';
-import { colors, spacing, radius, typography } from '@app/theme';
+import { colors, spacing, radius, typography } from '@core/theme';
 
 export function MissingScreen() {
   const [query, setQuery] = useState('');
@@ -34,7 +34,9 @@ export function MissingScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.title}>❌ Faltantes</Text>
-        <Text style={styles.subtitle}>{total} figurinhas · {sections.length} seleções</Text>
+        <Text style={styles.subtitle}>
+          {total} figurinhas · {sections.length} seleções
+        </Text>
         <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar..." />
       </View>
       <SectionList
@@ -78,12 +80,30 @@ const styles = StyleSheet.create({
   title: { ...typography.h1, color: colors.white },
   subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, marginTop: spacing.sm },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+  },
   sectionFlag: { fontSize: 18 },
   sectionName: { ...typography.body, fontWeight: '700', color: colors.primary },
-  countBadge: { backgroundColor: '#E8E8E8', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  countBadge: {
+    backgroundColor: '#E8E8E8',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
   countText: { fontSize: 11, color: colors.textSecondary },
   chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.md },
-  chip: { backgroundColor: colors.white, borderWidth: 1, borderColor: '#E0E0E0', borderRadius: radius.sm, paddingVertical: 6, paddingHorizontal: 10 },
+  chip: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: radius.sm,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
   chipText: { fontSize: 12, fontWeight: '600', color: colors.textPrimary },
 });

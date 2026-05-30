@@ -3,8 +3,8 @@ import { View, Text, FlatList, StyleSheet, SafeAreaView } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { StickerCard } from '@modules/album/components/StickerCard';
 import { ProgressBar } from '@shared/components/ProgressBar';
-import { colors, spacing, typography } from '@app/theme';
-import type { TeamDetailScreenProps } from '@app/navigation/types';
+import { colors, spacing, typography } from '@core/theme';
+import type { TeamDetailScreenProps } from '@core/navigation/types';
 
 const NUM_COLUMNS = 5;
 
@@ -28,7 +28,9 @@ export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
         <LegendItem color={colors.missing.background} label="Faltante" />
         <LegendItem color={colors.owned.border} label="Tenho" />
         <LegendItem color={colors.duplicate.border} label="Repetida" />
-        <Text style={styles.counter}>{owned}/{teamStickers.length}</Text>
+        <Text style={styles.counter}>
+          {owned}/{teamStickers.length}
+        </Text>
       </View>
       <FlatList
         data={teamStickers}
@@ -58,7 +60,15 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   progressBar: { backgroundColor: colors.primary },
-  legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.sm + 4, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  legend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.sm + 4,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 10, height: 10, borderRadius: 3 },
   legendLabel: { ...typography.caption, color: colors.textMuted },

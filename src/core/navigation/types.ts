@@ -1,5 +1,5 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { StackScreenProps } from '@react-navigation/stack';
+import type { NativeStackScreenProps as StackScreenProps } from '@react-navigation/native-stack';
 import type { CompositeScreenProps } from '@react-navigation/native';
 
 export type BottomTabParamList = {

@@ -5,8 +5,8 @@ import { useStickerStore } from '@modules/album/store/stickerStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ProgressBar } from '@shared/components/ProgressBar';
 import { EmptyState } from '@shared/components/EmptyState';
-import { colors, spacing, radius, shadows, typography } from '@app/theme';
-import type { AlbumListScreenProps } from '@app/navigation/types';
+import { colors, spacing, radius, shadows, typography } from '@core/theme';
+import type { AlbumListScreenProps } from '@core/navigation/types';
 import type { Selecao } from '@shared/types';
 
 export function AlbumListScreen() {
@@ -32,13 +32,17 @@ export function AlbumListScreen() {
     return (
       <TouchableOpacity
         style={[styles.teamRow, shadows.card]}
-        onPress={() => navigation.navigate('TeamDetail', { selecaoId: item.id, selecaoNome: item.nome })}
+        onPress={() =>
+          navigation.navigate('TeamDetail', { selecaoId: item.id, selecaoNome: item.nome })
+        }
         activeOpacity={0.7}
       >
         <Text style={styles.flag}>🏳️</Text>
         <View style={styles.info}>
           <Text style={styles.name}>{item.nome}</Text>
-          <Text style={styles.sub}>{owned}/{total} · {item.codigo_fifa}</Text>
+          <Text style={styles.sub}>
+            {owned}/{total} · {item.codigo_fifa}
+          </Text>
           <ProgressBar progress={progress} height={4} />
         </View>
         <Text style={styles.arrow}>›</Text>
@@ -71,7 +75,15 @@ const styles = StyleSheet.create({
   title: { ...typography.h1, color: colors.white },
   subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
-  teamRow: { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  teamRow: {
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   flag: { fontSize: 24 },
   info: { flex: 1, gap: 4 },
   name: { ...typography.body, fontWeight: '600', color: colors.textPrimary },

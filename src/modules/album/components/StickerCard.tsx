@@ -1,13 +1,21 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { colors, radius } from '@app/theme';
+import { colors, radius } from '@core/theme';
 import type { StickerStatus } from '@shared/types';
 
 const stateStyles: Record<StickerStatus, { background: string; text: string; border?: string }> = {
   missing: { background: colors.missing.background, text: colors.missing.text },
-  owned: { background: colors.owned.background, text: colors.owned.text, border: colors.owned.border },
-  duplicate: { background: colors.duplicate.background, text: colors.duplicate.text, border: colors.duplicate.border },
+  owned: {
+    background: colors.owned.background,
+    text: colors.owned.text,
+    border: colors.owned.border,
+  },
+  duplicate: {
+    background: colors.duplicate.background,
+    text: colors.duplicate.text,
+    border: colors.duplicate.border,
+  },
 };
 
 interface StickerCardProps {

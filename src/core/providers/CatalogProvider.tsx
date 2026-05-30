@@ -4,7 +4,7 @@ import { catalogService } from '@modules/album/services/catalogService';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { Loading } from '@shared/components/Loading';
 import { logger } from '@shared/utils/logger';
-import { colors, spacing, typography } from '@app/theme';
+import { colors, spacing, typography } from '@core/theme';
 
 interface CatalogProviderProps {
   children: React.ReactNode;
@@ -61,7 +61,9 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
   }, [store, checkForUpdates]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void initializeCatalog(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void initializeCatalog();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
     return (

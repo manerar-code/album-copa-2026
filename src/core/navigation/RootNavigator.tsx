@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
-import { colors } from '@app/theme';
+import { colors } from '@core/theme';
 import { AlbumStack } from './AlbumStack';
 import type { BottomTabParamList } from './types';
 
@@ -26,9 +26,7 @@ export function RootNavigator() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>
-              {tabIcons[route.name]}
-            </Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{tabIcons[route.name]}</Text>
           ),
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
@@ -40,7 +38,11 @@ export function RootNavigator() {
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
         <Tab.Screen name="Album" component={AlbumStack} options={{ title: 'Álbum' }} />
         <Tab.Screen name="Missing" component={MissingScreen} options={{ title: 'Faltantes' }} />
-        <Tab.Screen name="Duplicates" component={DuplicatesScreen} options={{ title: 'Repetidas' }} />
+        <Tab.Screen
+          name="Duplicates"
+          component={DuplicatesScreen}
+          options={{ title: 'Repetidas' }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );

@@ -1,11 +1,11 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
-import { colors } from '@app/theme';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { colors } from '@core/theme';
 import { AlbumListScreen } from '@modules/album/screens/AlbumListScreen';
 import { TeamDetailScreen } from '@modules/album/screens/TeamDetailScreen';
 import type { AlbumStackParamList } from './types';
 
-const Stack = createStackNavigator<AlbumStackParamList>();
+const Stack = createNativeStackNavigator<AlbumStackParamList>();
 
 export function AlbumStack() {
   return (
@@ -16,11 +16,7 @@ export function AlbumStack() {
         headerTitleStyle: { fontWeight: '700' },
       }}
     >
-      <Stack.Screen
-        name="AlbumList"
-        component={AlbumListScreen}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="AlbumList" component={AlbumListScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="TeamDetail"
         component={TeamDetailScreen}

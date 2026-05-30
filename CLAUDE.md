@@ -1,5 +1,33 @@
 # Álbum Copa 2026 — Contexto do Projeto
 
+## Status Atual
+- ✅ App rodando no navegador (Edge/Chrome) via `npm run web`
+- ✅ Supabase conectado (logs mostram "Catalog cached — version 1")
+- ✅ AsyncStorage funcionando ("Collection loaded from storage")
+- ⚠️ Tela em branco — dados do Supabase não aparecem (seleções/figurinhas vazias)
+- ⚠️ Expo Go no iPhone dá timeout (bundle grande)
+- ⚠️ Warnings: `props.pointerEvents` e `shadow*` props deprecated (web only)
+
+## Como rodar
+```
+"C:\Program Files\nodejs\npm.cmd" run web --prefix "C:\Users\RobertoManera\OneDrive - Kbase\ProjetosClaude\AppAlbum\album-copa-2026"
+```
+Abre em http://localhost:8081
+
+## Próximas tarefas
+1. Verificar dados no Supabase (tabelas albums, selecoes, figurinhas)
+2. Corrigir warnings de props deprecated para web
+3. Resolver timeout do Expo Go no iPhone
+4. Testar ciclo completo: marcar figurinha → persistir → dashboard atualizar
+
+## Mudanças feitas nesta sessão
+- `src/app/` renomeado para `src/core/`
+- Aliases atualizados: `@app/*` → `@core/*`
+- `metro.config.js` criado com aliases
+- `babel.config.js` criado com babel-preset-expo
+- `@react-navigation/stack` substituído por `@react-navigation/native-stack`
+- `react-dom` fixado em 19.2.3
+
 ## O que é
 App mobile para colecionadores de figurinhas do álbum da Copa do Mundo 2026.
 Sem login, sem backend de usuário — foco em simplicidade e velocidade offline.

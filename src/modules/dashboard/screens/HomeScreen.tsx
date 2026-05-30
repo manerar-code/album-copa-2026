@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ProgressBar } from '@shared/components/ProgressBar';
-import { colors, spacing, radius, shadows, typography } from '@app/theme';
+import { colors, spacing, radius, shadows, typography } from '@core/theme';
 
 export function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,21 +104,61 @@ const styles = StyleSheet.create({
   title: { ...typography.h1, color: colors.white },
   subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   content: { padding: spacing.md },
-  card: { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.md },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
   progressTitle: { ...typography.h3, color: colors.primary },
   progressSub: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   progressPct: { fontSize: 26, fontWeight: '700', color: colors.secondary },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
-  statCard: { backgroundColor: colors.white, borderRadius: radius.lg, padding: spacing.md, width: '47%' },
+  statCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    width: '47%',
+  },
   statValue: { fontSize: 30, fontWeight: '700' },
-  statLabel: { ...typography.label, color: colors.textMuted, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionTitle: { ...typography.label, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm },
-  teamRow: { backgroundColor: colors.white, borderRadius: radius.md, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  statLabel: {
+    ...typography.label,
+    color: colors.textMuted,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionTitle: {
+    ...typography.label,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.sm,
+  },
+  teamRow: {
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   teamFlag: { fontSize: 24 },
   teamInfo: { flex: 1, gap: 4 },
   teamName: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
   teamSub: { ...typography.caption, color: colors.textMuted },
-  dupBadge: { backgroundColor: colors.accent, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 },
+  dupBadge: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
   dupBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
 });

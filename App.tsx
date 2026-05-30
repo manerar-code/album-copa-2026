@@ -1,18 +1,16 @@
-import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
-import { CatalogProvider } from './src/app/providers/CatalogProvider';
-import { RootNavigator } from './src/app/navigation/RootNavigator';
+import { StyleSheet, View } from 'react-native';
+import { CatalogProvider } from './src/core/providers/CatalogProvider';
+import { RootNavigator } from './src/core/navigation/RootNavigator';
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="light" />
       <CatalogProvider>
         <RootNavigator />
       </CatalogProvider>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 

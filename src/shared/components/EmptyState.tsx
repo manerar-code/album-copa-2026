@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '@app/theme';
+import { colors, spacing, typography } from '@core/theme';
 
 interface EmptyStateProps {
   emoji?: string;
@@ -22,5 +22,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   emoji: { fontSize: 48, marginBottom: spacing.md },
   title: { ...typography.h3, color: colors.textPrimary, textAlign: 'center' },
-  subtitle: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
+  subtitle: {
+    ...typography.body,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
 });

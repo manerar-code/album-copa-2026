@@ -1,8 +1,12 @@
 {
   "expo": {
-    "name": "album-copa-2026",
+    "name": "Álbum Copa 2026",
     "slug": "album-copa-2026",
     "version": "1.0.0",
+    "scheme": "album-copa-2026",
+    "experiments": {
+      "typedRoutes": false
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
