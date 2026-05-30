@@ -1,0 +1,5 @@
+export const STORAGE_KEYS = {
+  USER_COLLECTION: 'user_collection',
+  CATALOG_CACHE: 'catalog_cache',
+  CATALOG_VERSION: 'catalog_version',
+} as const;
