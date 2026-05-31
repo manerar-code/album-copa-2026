@@ -21,9 +21,10 @@ const stateStyles: Record<StickerStatus, { background: string; text: string; bor
 interface StickerCardProps {
   figurinhaId: string;
   numero: string;
+  descricao?: string;
 }
 
-export function StickerCard({ figurinhaId, numero }: StickerCardProps) {
+export function StickerCard({ figurinhaId, numero, descricao }: StickerCardProps) {
   const { toggleSticker, getStatus } = useStickerStore();
   const status = getStatus(figurinhaId);
   const style = stateStyles[status];
@@ -39,6 +40,11 @@ export function StickerCard({ figurinhaId, numero }: StickerCardProps) {
       activeOpacity={0.7}
     >
       <Text style={[styles.number, { color: style.text }]}>{numero}</Text>
+      {!!descricao && (
+        <Text style={[styles.descricao, { color: style.text }]} numberOfLines={2}>
+          {descricao}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -49,6 +55,8 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 4,
   },
   number: { fontSize: 12, fontWeight: '800' },
+  descricao: { fontSize: 8, fontWeight: '500', textAlign: 'center', marginTop: 2, opacity: 0.85 },
 });

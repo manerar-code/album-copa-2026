@@ -4,6 +4,7 @@ import { useStickerStore } from '@modules/album/store/stickerStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { EmptyState } from '@shared/components/EmptyState';
 import { colors, spacing, radius, typography } from '@core/theme';
+import { FlagImage } from '@shared/components/FlagImage';
 
 export function MissingScreen() {
   const [query, setQuery] = useState('');
@@ -13,6 +14,7 @@ export function MissingScreen() {
     const q = query.toLowerCase();
     return selecoes
       .map(selecao => {
+        const codigoFifa = selecao.codigo_fifa;
         const missing = figurinhas.filter(f => {
           const isMissing = (collection[f.id] ?? 'missing') === 'missing';
           const matchesSelecao = f.selecao_id === selecao.id;
@@ -23,7 +25,13 @@ export function MissingScreen() {
             selecao.codigo_fifa.toLowerCase().includes(q);
           return isMissing && matchesSelecao && matchesQuery;
         });
-        return { title: selecao.nome, count: missing.length, data: missing };
+        return {
+          title: selecao.nome,
+          codigoFifa,
+          bandeiraUrl: selecao.bandeira_url,
+          count: missing.length,
+          data: missing,
+        };
       })
       .filter(s => s.data.length > 0);
   }, [figurinhas, selecoes, collection, query]);
@@ -49,7 +57,11 @@ export function MissingScreen() {
         }
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionFlag}>🏳️</Text>
+            <FlagImage
+              codigoFifa={section.codigoFifa}
+              bandeiraUrl={section.bandeiraUrl}
+              size={22}
+            />
             <Text style={styles.sectionName}>{section.title}</Text>
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{section.count} faltantes</Text>

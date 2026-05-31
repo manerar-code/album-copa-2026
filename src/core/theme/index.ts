@@ -1,34 +1,39 @@
 export const colors = {
-  primary: '#0A2342',
-  secondary: '#2ECC71',
-  accent: '#F1C40F',
-  background: '#F8F9FA',
-  white: '#FFFFFF',
-  error: '#E74C3C',
+  // Brand — Copa 2026
+  primary: '#0A2342', // Navy escuro
+  primaryLight: '#1A3A6C', // Navy médio (gradientes)
+  secondary: '#00A651', // Verde FIFA
+  accent: '#E8B84B', // Ouro Copa
+  red: '#E63946', // Vermelho vibrante
 
-  // Sticker states
+  background: '#EEF2F7', // Azul-gelo suave
+  surface: '#FFFFFF', // Cards
+  white: '#FFFFFF',
+  error: '#E63946',
+
+  // Figurinha states
   missing: {
-    background: '#E8E8E8',
-    text: '#999999',
-    border: '#D0D0D0',
+    background: '#EAECF0',
+    text: '#8A94A6',
+    border: '#D0D5DD',
   },
   owned: {
-    background: '#D5F5E3',
-    text: '#1E8449',
-    border: '#2ECC71',
+    background: '#D1FAE5',
+    text: '#065F46',
+    border: '#00A651',
   },
   duplicate: {
-    background: '#FEF9E7',
-    text: '#B7950B',
-    border: '#F1C40F',
+    background: '#FEF3C7',
+    text: '#92400E',
+    border: '#E8B84B',
   },
 
   // UI
-  border: '#E5E5E5',
-  textPrimary: '#1A1A1A',
-  textSecondary: '#666666',
-  textMuted: '#999999',
-  cardShadow: 'rgba(0,0,0,0.06)',
+  border: '#DDE3EC',
+  textPrimary: '#0D1B2A',
+  textSecondary: '#4A5568',
+  textMuted: '#8A94A6',
+  cardShadow: 'rgba(10,35,66,0.08)',
 };
 
 export const spacing = {
@@ -48,7 +53,7 @@ export const radius = {
 };
 
 export const typography = {
-  h1: { fontSize: 24, fontWeight: '700' as const },
+  h1: { fontSize: 24, fontWeight: '800' as const },
   h2: { fontSize: 20, fontWeight: '700' as const },
   h3: { fontSize: 17, fontWeight: '600' as const },
   body: { fontSize: 15, fontWeight: '400' as const },
@@ -58,10 +63,20 @@ export const typography = {
 
 export const shadows = {
   card: {
-    shadowColor: '#000',
+    shadowColor: '#0A2342',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
     elevation: 3,
   },
+  strong: {
+    shadowColor: '#0A2342',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
 };
+
+// Gradiente padrão dos headers
+export const headerGradient = ['#0A2342', '#1A3A6C'] as const;

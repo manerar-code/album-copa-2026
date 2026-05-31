@@ -1,33 +1,65 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ProgressBar } from '@shared/components/ProgressBar';
 import { EmptyState } from '@shared/components/EmptyState';
 import { colors, spacing, radius, shadows, typography } from '@core/theme';
+import { FlagImage } from '@shared/components/FlagImage';
 import type { AlbumListScreenProps } from '@core/navigation/types';
 import type { Selecao } from '@shared/types';
 
 export function AlbumListScreen() {
   const navigation = useNavigation<AlbumListScreenProps['navigation']>();
   const [query, setQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('');
   const { selecoes, figurinhas, collection } = useStickerStore();
 
-  const filtered = selecoes.filter(
-    s =>
+  // Tipos distintos disponíveis na base
+  const availableTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of figurinhas) {
+      if (f.type) set.add(f.type);
+    }
+    return Array.from(set).sort();
+  }, [figurinhas]);
+
+  // IDs das seleções que têm pelo menos 1 figurinha do tipo selecionado
+  const selecaoIdsComTipo = useMemo(() => {
+    if (!selectedType) return null;
+    const ids = new Set<string>();
+    for (const f of figurinhas) {
+      if (f.type === selectedType) ids.add(f.selecao_id);
+    }
+    return ids;
+  }, [selectedType, figurinhas]);
+
+  const filtered = selecoes.filter(s => {
+    const matchesText =
       s.nome.toLowerCase().includes(query.toLowerCase()) ||
-      s.codigo_fifa.toLowerCase().includes(query.toLowerCase()),
-  );
+      s.codigo_fifa.toLowerCase().includes(query.toLowerCase());
+    const matchesType = !selecaoIdsComTipo || selecaoIdsComTipo.has(s.id);
+    return matchesText && matchesType;
+  });
 
   const getTeamStats = (selecaoId: string) => {
     const stickers = figurinhas.filter(f => f.selecao_id === selecaoId);
     const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
-    return { total: stickers.length, owned };
+    const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
+    return { total: stickers.length, owned, dup };
   };
 
   const renderItem = ({ item }: { item: Selecao }) => {
-    const { total, owned } = getTeamStats(item.id);
+    const { total, owned, dup } = getTeamStats(item.id);
     const progress = total > 0 ? owned / total : 0;
     return (
       <TouchableOpacity
@@ -37,7 +69,7 @@ export function AlbumListScreen() {
         }
         activeOpacity={0.7}
       >
-        <Text style={styles.flag}>🏳️</Text>
+        <FlagImage codigoFifa={item.codigo_fifa} bandeiraUrl={item.bandeira_url} size={28} />
         <View style={styles.info}>
           <Text style={styles.name}>{item.nome}</Text>
           <Text style={styles.sub}>
@@ -45,6 +77,11 @@ export function AlbumListScreen() {
           </Text>
           <ProgressBar progress={progress} height={4} />
         </View>
+        {dup > 0 && (
+          <View style={styles.dupBadge}>
+            <Text style={styles.dupBadgeText}>{dup} rep</Text>
+          </View>
+        )}
         <Text style={styles.arrow}>›</Text>
       </TouchableOpacity>
     );
@@ -55,7 +92,37 @@ export function AlbumListScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>📖 Álbum</Text>
         <Text style={styles.subtitle}>{selecoes.length} seleções</Text>
-        <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar seleção..." />
+        <SearchInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Buscar seleção, número, nome..."
+        />
+        {availableTypes.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+            contentContainerStyle={styles.filterRow}
+          >
+            <TouchableOpacity
+              style={[styles.chip, !selectedType && styles.chipActive]}
+              onPress={() => setSelectedType('')}
+            >
+              <Text style={[styles.chipText, !selectedType && styles.chipTextActive]}>Todos</Text>
+            </TouchableOpacity>
+            {availableTypes.map(t => (
+              <TouchableOpacity
+                key={t}
+                style={[styles.chip, selectedType === t && styles.chipActive]}
+                onPress={() => setSelectedType(selectedType === t ? '' : t)}
+              >
+                <Text style={[styles.chipText, selectedType === t && styles.chipTextActive]}>
+                  {t}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
       <FlatList
         data={filtered}
@@ -89,4 +156,32 @@ const styles = StyleSheet.create({
   name: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
   sub: { ...typography.caption, color: colors.textMuted },
   arrow: { color: '#ccc', fontSize: 22 },
+  filterScroll: {
+    marginTop: spacing.sm,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingRight: spacing.md,
+  },
+  chip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  chipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  chipText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
+  chipTextActive: { color: colors.primary, fontWeight: '700' },
+  dupBadge: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  dupBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
 });

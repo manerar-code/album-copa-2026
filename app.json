@@ -11,9 +11,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.manera.albumcopa2026"
     },
     "android": {
+      "package": "com.manera.albumcopa2026",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,6 +26,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "758486d3-d924-4d75-b91a-a32c41f7ae0b"
+      }
+    },
+    "owner": "manerar",
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

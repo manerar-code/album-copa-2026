@@ -7,6 +7,7 @@ export type BottomTabParamList = {
   Album: undefined;
   Missing: undefined;
   Duplicates: undefined;
+  Stats: undefined;
 };
 
 export type AlbumStackParamList = {

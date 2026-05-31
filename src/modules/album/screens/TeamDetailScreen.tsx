@@ -38,7 +38,7 @@ export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
         numColumns={NUM_COLUMNS}
         renderItem={({ item }) => (
           <View style={styles.stickerWrapper}>
-            <StickerCard figurinhaId={item.id} numero={item.numero} />
+            <StickerCard figurinhaId={item.id} numero={item.numero} descricao={item.descricao} />
           </View>
         )}
         contentContainerStyle={styles.grid}

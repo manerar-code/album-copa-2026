@@ -12,6 +12,7 @@ import { useStickerStore } from '@modules/album/store/stickerStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { EmptyState } from '@shared/components/EmptyState';
 import { colors, spacing, radius, typography } from '@core/theme';
+import { FlagImage } from '@shared/components/FlagImage';
 
 export function DuplicatesScreen() {
   const [query, setQuery] = useState('');
@@ -21,6 +22,7 @@ export function DuplicatesScreen() {
     const q = query.toLowerCase();
     return selecoes
       .map(selecao => {
+        const codigoFifa = selecao.codigo_fifa;
         const duplicates = figurinhas.filter(f => {
           const isDuplicate = (collection[f.id] ?? 'missing') === 'duplicate';
           const matchesSelecao = f.selecao_id === selecao.id;
@@ -31,7 +33,13 @@ export function DuplicatesScreen() {
             selecao.codigo_fifa.toLowerCase().includes(q);
           return isDuplicate && matchesSelecao && matchesQuery;
         });
-        return { title: selecao.nome, count: duplicates.length, data: duplicates };
+        return {
+          title: selecao.nome,
+          codigoFifa,
+          bandeiraUrl: selecao.bandeira_url,
+          count: duplicates.length,
+          data: duplicates,
+        };
       })
       .filter(s => s.data.length > 0);
   }, [figurinhas, selecoes, collection, query]);
@@ -39,12 +47,17 @@ export function DuplicatesScreen() {
   const total = sections.reduce((acc, s) => acc + s.count, 0);
 
   const handleShare = async () => {
-    const lines = [
-      'Minhas figurinhas repetidas:\n',
-      ...sections.map(s => `${s.title}\n${s.data.map(f => `  ${f.numero}`).join('\n')}`),
-      '\nEnviado pelo Álbum Copa 2026',
-    ];
-    await Share.share({ message: lines.join('\n') });
+    const teamLines = sections.map(s => {
+      const stickers = s.data.map(f => `  ${f.numero} · ${f.nome}`).join('\n');
+      return `${s.title}\n${stickers}`;
+    });
+    const message = [
+      '🔄 Minhas figurinhas repetidas — Álbum Copa 2026\n',
+      ...teamLines,
+      `\nTotal: ${total} repetidas em ${sections.length} seleções`,
+      'Enviado pelo Álbum Copa 2026 📱',
+    ].join('\n');
+    await Share.share({ message });
   };
 
   return (
@@ -77,7 +90,11 @@ export function DuplicatesScreen() {
         }
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionFlag}>🏳️</Text>
+            <FlagImage
+              codigoFifa={section.codigoFifa}
+              bandeiraUrl={section.bandeiraUrl}
+              size={22}
+            />
             <Text style={styles.sectionName}>{section.title}</Text>
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{section.count} repetidas</Text>

@@ -14,10 +14,7 @@ interface CatalogCache {
 export const catalogService = {
   async checkVersion(): Promise<number | null> {
     try {
-      const { data, error } = await supabase
-        .from('albums')
-        .select('versao')
-        .single();
+      const { data, error } = await supabase.from('albums').select('versao').single();
       if (error) throw error;
       return data?.versao ?? null;
     } catch (error) {
@@ -27,10 +24,7 @@ export const catalogService = {
 
   async getAlbum(): Promise<Album> {
     try {
-      const { data, error } = await supabase
-        .from('albums')
-        .select('*')
-        .single();
+      const { data, error } = await supabase.from('albums').select('*').single();
       if (error) throw error;
       return data as Album;
     } catch (error) {
@@ -54,13 +48,22 @@ export const catalogService = {
 
   async getStickers(albumId: string): Promise<Figurinha[]> {
     try {
-      const { data, error } = await supabase
-        .from('figurinhas')
-        .select('*')
-        .eq('album_id', albumId)
-        .order('ordem');
-      if (error) throw error;
-      return (data ?? []) as Figurinha[];
+      const PAGE = 1000;
+      let all: Figurinha[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('figurinhas')
+          .select('*')
+          .eq('album_id', albumId)
+          .order('ordem')
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        all = all.concat((data ?? []) as Figurinha[]);
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     } catch (error) {
       throw handleError(error, 'catalogService.getStickers');
     }

@@ -41,6 +41,9 @@ export function useSearch() {
         if (!selecao) return false;
         return (
           f.numero.toLowerCase().includes(q) ||
+          f.nome.toLowerCase().includes(q) ||
+          f.descricao.toLowerCase().includes(q) ||
+          f.type.toLowerCase().includes(q) ||
           selecao.nome.toLowerCase().includes(q) ||
           selecao.codigo_fifa.toLowerCase().includes(q)
         );

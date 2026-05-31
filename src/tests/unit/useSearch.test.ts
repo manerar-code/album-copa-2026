@@ -9,9 +9,36 @@ const mockSelecoes = [
   { id: 's2', album_id: 'a1', nome: 'Argentina', codigo_fifa: 'ARG', ordem: 2, bandeira_url: '' },
 ];
 const mockFigurinhas = [
-  { id: 'f1', album_id: 'a1', selecao_id: 's1', numero: '001', descricao: '', ordem: 1 },
-  { id: 'f2', album_id: 'a1', selecao_id: 's1', numero: '014', descricao: '', ordem: 14 },
-  { id: 'f3', album_id: 'a1', selecao_id: 's2', numero: '021', descricao: '', ordem: 1 },
+  {
+    id: 'f1',
+    album_id: 'a1',
+    selecao_id: 's1',
+    numero: '001',
+    nome: '',
+    type: '',
+    descricao: '',
+    ordem: 1,
+  },
+  {
+    id: 'f2',
+    album_id: 'a1',
+    selecao_id: 's1',
+    numero: '014',
+    nome: '',
+    type: '',
+    descricao: '',
+    ordem: 14,
+  },
+  {
+    id: 'f3',
+    album_id: 'a1',
+    selecao_id: 's2',
+    numero: '021',
+    nome: '',
+    type: '',
+    descricao: '',
+    ordem: 1,
+  },
 ];
 
 beforeEach(() => {
@@ -26,33 +53,49 @@ describe('useSearch', () => {
 
   it('finds sticker by number', async () => {
     const { result } = renderHook(() => useSearch());
-    act(() => { result.current.setQuery('014'); });
-    act(() => { jest.advanceTimersByTime(300); });
+    act(() => {
+      result.current.setQuery('014');
+    });
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
     expect(result.current.results).toHaveLength(1);
     expect(result.current.results[0].figurinha.numero).toBe('014');
   });
 
   it('finds stickers by country name', async () => {
     const { result } = renderHook(() => useSearch());
-    act(() => { result.current.setQuery('Brasil'); });
-    act(() => { jest.advanceTimersByTime(300); });
+    act(() => {
+      result.current.setQuery('Brasil');
+    });
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
     expect(result.current.results).toHaveLength(2);
   });
 
   it('finds stickers by FIFA code', async () => {
     const { result } = renderHook(() => useSearch());
-    act(() => { result.current.setQuery('ARG'); });
-    act(() => { jest.advanceTimersByTime(300); });
+    act(() => {
+      result.current.setQuery('ARG');
+    });
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
     expect(result.current.results).toHaveLength(1);
     expect(result.current.results[0].selecao.codigo_fifa).toBe('ARG');
   });
 
   it('debounces search by 300ms', () => {
     const { result } = renderHook(() => useSearch());
-    act(() => { result.current.setQuery('Bra'); });
+    act(() => {
+      result.current.setQuery('Bra');
+    });
     // Before debounce
     expect(result.current.results).toHaveLength(0);
-    act(() => { jest.advanceTimersByTime(300); });
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
     // After debounce
     expect(result.current.results.length).toBeGreaterThan(0);
   });

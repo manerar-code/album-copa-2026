@@ -20,6 +20,8 @@ export interface Figurinha {
   album_id: string;
   selecao_id: string;
   numero: string;
+  nome: string;
+  type: string;
   descricao: string;
   ordem: number;
 }
@@ -30,3 +32,10 @@ export interface StickerState {
 }
 
 export type UserCollection = Record<string, StickerStatus>;
+
+export interface AppUser {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url?: string;
+}
