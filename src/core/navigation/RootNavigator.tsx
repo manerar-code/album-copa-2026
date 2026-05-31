@@ -82,7 +82,12 @@ export function RootNavigator() {
         onPress: async () => {
           setProfileVisible(false);
           await authService.signOut();
-          setUser(null);
+          if (Platform.OS === 'web') {
+            // eslint-disable-next-line no-undef
+            window.location.href = window.location.origin;
+          } else {
+            setUser(null);
+          }
         },
       },
     ]);
