@@ -1,23 +1,39 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { collectionService } from '@shared/services/collectionService';
+import { cloudCollectionService } from '@shared/services/cloudCollectionService';
+import { offlineQueueService } from '@shared/services/offlineQueueService';
+import { useSyncStore } from '@shared/store/syncStore';
 
 jest.mock('@shared/services/collectionService');
+jest.mock('@shared/services/cloudCollectionService', () => ({
+  cloudCollectionService: { upsertOne: jest.fn() },
+}));
+jest.mock('@shared/services/offlineQueueService', () => ({
+  offlineQueueService: { enqueue: jest.fn() },
+}));
+
 const mockSave = collectionService.save as jest.Mock;
 const mockLoad = collectionService.load as jest.Mock;
 const mockReset = collectionService.reset as jest.Mock;
+const mockUpsertOne = cloudCollectionService.upsertOne as jest.Mock;
+const mockEnqueue = offlineQueueService.enqueue as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockLoad.mockResolvedValue({});
   mockSave.mockResolvedValue(undefined);
   mockReset.mockResolvedValue(undefined);
-  // Reset store state
+  mockUpsertOne.mockResolvedValue(undefined);
+  mockEnqueue.mockResolvedValue(undefined);
+  useSyncStore.setState({ status: 'synced', pendingCount: 0 });
   useStickerStore.setState({
     collection: {},
     figurinhas: [],
     selecoes: [],
     album: null,
+    activeUserAlbumId: null,
+    syncUserId: null,
   });
 });
 
@@ -79,5 +95,75 @@ describe('stickerStore', () => {
     await act(async () => { await result.current.resetCollection(); });
     expect(result.current.collection).toEqual({});
     expect(mockReset).toHaveBeenCalledTimes(1);
+  });
+
+  describe('offline-aware toggleSticker', () => {
+    beforeEach(() => {
+      useStickerStore.setState({
+        activeUserAlbumId: 'album-1',
+        syncUserId: 'user-1',
+        collection: {},
+      });
+    });
+
+    it('when online (synced), calls cloudCollectionService.upsertOne', async () => {
+      useSyncStore.setState({ status: 'synced' });
+      const { result } = renderHook(() => useStickerStore());
+
+      await act(async () => { await result.current.toggleSticker('fig-001'); });
+
+      expect(result.current.getStatus('fig-001')).toBe('owned');
+      expect(mockUpsertOne).toHaveBeenCalledWith('album-1', 'fig-001', 'owned', 'user-1');
+      expect(mockEnqueue).not.toHaveBeenCalled();
+    });
+
+    it('when online (pending), calls cloudCollectionService.upsertOne', async () => {
+      useSyncStore.setState({ status: 'pending' });
+      const { result } = renderHook(() => useStickerStore());
+
+      await act(async () => { await result.current.toggleSticker('fig-001'); });
+
+      expect(mockUpsertOne).toHaveBeenCalledWith('album-1', 'fig-001', 'owned', 'user-1');
+      expect(mockEnqueue).not.toHaveBeenCalled();
+    });
+
+    it('when offline, enqueues instead of cloud upsert', async () => {
+      useSyncStore.setState({ status: 'offline' });
+      const { result } = renderHook(() => useStickerStore());
+
+      await act(async () => { await result.current.toggleSticker('fig-001'); });
+
+      expect(result.current.getStatus('fig-001')).toBe('owned');
+      expect(mockEnqueue).toHaveBeenCalledWith({
+        userAlbumId: 'album-1',
+        figurinhaId: 'fig-001',
+        status: 'owned',
+        createdAt: expect.any(Number),
+      });
+      expect(mockUpsertOne).not.toHaveBeenCalled();
+    });
+
+    it('local state is updated immediately (before enqueue completes)', async () => {
+      useSyncStore.setState({ status: 'offline' });
+      const { result } = renderHook(() => useStickerStore());
+
+      const togglePromise = result.current.toggleSticker('fig-001');
+
+      expect(result.current.getStatus('fig-001')).toBe('owned');
+
+      await act(async () => { await togglePromise; });
+    });
+
+    it('when offline and status becomes missing, does NOT enqueue', async () => {
+      useSyncStore.setState({ status: 'offline' });
+      useStickerStore.setState({ collection: { 'fig-001': 'duplicate' } });
+      const { result } = renderHook(() => useStickerStore());
+
+      await act(async () => { await result.current.toggleSticker('fig-001'); });
+
+      expect(result.current.getStatus('fig-001')).toBe('missing');
+      expect(mockEnqueue).not.toHaveBeenCalled();
+      expect(mockUpsertOne).not.toHaveBeenCalled();
+    });
   });
 });

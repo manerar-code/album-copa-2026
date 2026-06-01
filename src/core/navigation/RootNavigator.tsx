@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -20,6 +20,10 @@ import { useAuthStore } from '@modules/auth/store/authStore';
 import { authService } from '@modules/auth/services/authService';
 import { supabase } from '@shared/services/supabase';
 import { LoginScreen } from '@modules/auth/screens/LoginScreen';
+import { UserAlbumsModal } from '@modules/auth/components/UserAlbumsModal';
+import { TypeSettingsModal } from '@modules/auth/components/TypeSettingsModal';
+import { OnboardingModal } from '@modules/onboarding/components/OnboardingModal';
+import { OnboardingContext } from '@core/providers/OnboardingContext';
 import type { BottomTabParamList } from './types';
 
 import { HomeScreen } from '@modules/dashboard/screens/HomeScreen';
@@ -38,8 +42,10 @@ const tabIcons: Record<string, string> = {
 };
 
 export function RootNavigator() {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, showAlbumsModal, setShowAlbumsModal } = useAuthStore();
+  const { showOnboarding, completeOnboarding } = useContext(OnboardingContext);
   const [profileVisible, setProfileVisible] = useState(false);
+  const [typeSettingsVisible, setTypeSettingsVisible] = useState(false);
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState('');
   const [saving, setSaving] = useState(false);
@@ -73,7 +79,16 @@ export function RootNavigator() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    if (Platform.OS === 'web') {
+      // eslint-disable-next-line no-undef
+      const confirmed = window.confirm('Sair da conta? Coleção salva na nuvem.');
+      if (!confirmed) return;
+      await authService.signOut().catch(() => {});
+      // eslint-disable-next-line no-undef
+      window.location.href = window.location.origin;
+      return;
+    }
     Alert.alert('Sair da conta', 'Sua coleção fica salva na nuvem. Deseja sair?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -81,13 +96,8 @@ export function RootNavigator() {
         style: 'destructive',
         onPress: async () => {
           setProfileVisible(false);
-          await authService.signOut();
-          if (Platform.OS === 'web') {
-            // eslint-disable-next-line no-undef
-            window.location.href = window.location.origin;
-          } else {
-            setUser(null);
-          }
+          setUser(null);
+          await authService.signOut().catch(() => {});
         },
       },
     ]);
@@ -201,6 +211,13 @@ export function RootNavigator() {
             <View style={styles.divider} />
 
             <TouchableOpacity
+              style={styles.settingsBtn}
+              onPress={() => { setProfileVisible(false); setTypeSettingsVisible(true); }}
+            >
+              <Text style={styles.settingsBtnText}>⚙️ Tipos controlados</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.closeBtn}
               onPress={() => {
                 setEditing(false);
@@ -216,6 +233,19 @@ export function RootNavigator() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <UserAlbumsModal
+        visible={showAlbumsModal}
+        onClose={() => setShowAlbumsModal(false)}
+        userId={user.id}
+      />
+
+      <TypeSettingsModal
+        visible={typeSettingsVisible}
+        onClose={() => setTypeSettingsVisible(false)}
+      />
+
+      <OnboardingModal visible={showOnboarding} onComplete={completeOnboarding} />
     </NavigationContainer>
   );
 }
@@ -339,6 +369,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   closeBtnText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  settingsBtn: {
+    width: '100%',
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    marginBottom: spacing.sm,
+  },
+  settingsBtnText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   signOutBtn: {
     width: '100%',
     paddingVertical: spacing.sm,

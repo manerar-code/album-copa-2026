@@ -33,6 +33,13 @@ export interface StickerState {
 
 export type UserCollection = Record<string, StickerStatus>;
 
+export interface UserAlbum {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface AppUser {
   id: string;
   email: string;

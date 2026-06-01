@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,17 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { cloudCollectionService } from '@shared/services/cloudCollectionService';
+import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ProgressBar } from '@shared/components/ProgressBar';
 import { EmptyState } from '@shared/components/EmptyState';
+import { SkeletonBox } from '@shared/components/SkeletonBox';
 import { colors, spacing, radius, shadows, typography } from '@core/theme';
 import { FlagImage } from '@shared/components/FlagImage';
 import type { AlbumListScreenProps } from '@core/navigation/types';
@@ -22,16 +27,29 @@ export function AlbumListScreen() {
   const navigation = useNavigation<AlbumListScreenProps['navigation']>();
   const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const { selecoes, figurinhas, collection } = useStickerStore();
+  const [refreshing, setRefreshing] = useState(false);
+  const { selecoes, figurinhas, collection, applyCollection, syncUserId, activeUserAlbumId, userAlbums, isInitialized } = useStickerStore();
+  const { trackedTypes } = useUserSettingsStore();
+
+  const onRefresh = useCallback(async () => {
+    if (!activeUserAlbumId) return;
+    setRefreshing(true);
+    try {
+      const cloud = await cloudCollectionService.load(activeUserAlbumId);
+      await applyCollection(cloud);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [activeUserAlbumId, applyCollection]);
 
   // Tipos distintos disponíveis na base
   const availableTypes = useMemo(() => {
     const set = new Set<string>();
     for (const f of figurinhas) {
-      if (f.type) set.add(f.type);
+      if (f.type && (!trackedTypes || trackedTypes.includes(f.type))) set.add(f.type);
     }
     return Array.from(set).sort();
-  }, [figurinhas]);
+  }, [figurinhas, trackedTypes]);
 
   // IDs das seleções que têm pelo menos 1 figurinha do tipo selecionado
   const selecaoIdsComTipo = useMemo(() => {
@@ -43,6 +61,8 @@ export function AlbumListScreen() {
     return ids;
   }, [selectedType, figurinhas]);
 
+  if (!isInitialized) return <AlbumListSkeleton />;
+
   const filtered = selecoes.filter(s => {
     const matchesText =
       s.nome.toLowerCase().includes(query.toLowerCase()) ||
@@ -52,7 +72,9 @@ export function AlbumListScreen() {
   });
 
   const getTeamStats = (selecaoId: string) => {
-    const stickers = figurinhas.filter(f => f.selecao_id === selecaoId);
+    const stickers = figurinhas
+      .filter(f => f.selecao_id === selecaoId)
+      .filter(f => !trackedTypes || trackedTypes.includes(f.type));
     const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
     const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
     return { total: stickers.length, owned, dup };
@@ -89,9 +111,13 @@ export function AlbumListScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>📖 Álbum</Text>
-        <Text style={styles.subtitle}>{selecoes.length} seleções</Text>
+      <ScreenHeader
+        title="📖 Álbum"
+        subtitle={`${selecoes.length} seleções`}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+      />
+      <View style={styles.filterContainer}>
         <SearchInput
           value={query}
           onChangeText={setQuery}
@@ -131,16 +157,40 @@ export function AlbumListScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={<EmptyState emoji="🔍" title="Nenhuma seleção encontrada" />}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.white} />}
       />
+    </SafeAreaView>
+  );
+}
+
+function AlbumListSkeleton() {
+  return (
+    <SafeAreaView
+      accessible
+      accessibilityLabel="Carregando..."
+      style={{ flex: 1, backgroundColor: colors.primary }}
+    >
+      <View style={{ backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.md }}>
+        <SkeletonBox width="50%" height={22} style={{ marginBottom: spacing.sm }} />
+        <SkeletonBox width="100%" height={40} borderRadius={radius.md} style={{ marginBottom: spacing.sm }} />
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <SkeletonBox width={60} height={28} borderRadius={radius.full} />
+          <SkeletonBox width={80} height={28} borderRadius={radius.full} />
+          <SkeletonBox width={70} height={28} borderRadius={radius.full} />
+        </View>
+      </View>
+      <View style={{ padding: spacing.md, backgroundColor: colors.background, flex: 1, gap: spacing.sm }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          <SkeletonBox key={i} width="100%" height={68} borderRadius={radius.md} />
+        ))}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.primary },
-  header: { backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg },
-  title: { ...typography.h1, color: colors.white },
-  subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  filterContainer: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
   teamRow: {
     backgroundColor: colors.white,

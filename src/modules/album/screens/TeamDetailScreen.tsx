@@ -1,20 +1,29 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, SafeAreaView } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { StickerCard } from '@modules/album/components/StickerCard';
 import { ProgressBar } from '@shared/components/ProgressBar';
-import { colors, spacing, typography } from '@core/theme';
+import { SkeletonBox } from '@shared/components/SkeletonBox';
+import { colors, spacing, radius, typography } from '@core/theme';
 import type { TeamDetailScreenProps } from '@core/navigation/types';
 
 const NUM_COLUMNS = 5;
 
 export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
   const { selecaoId } = route.params;
-  const { figurinhas, collection } = useStickerStore();
+  const { figurinhas, collection, isInitialized } = useStickerStore();
+  const { trackedTypes } = useUserSettingsStore();
 
-  const teamStickers = figurinhas
-    .filter(f => f.selecao_id === selecaoId)
-    .sort((a, b) => a.ordem - b.ordem);
+  const teamStickers = useMemo(() =>
+    figurinhas
+      .filter(f => f.selecao_id === selecaoId)
+      .filter(f => !trackedTypes || trackedTypes.includes(f.type))
+      .sort((a, b) => a.ordem - b.ordem),
+    [figurinhas, selecaoId, trackedTypes],
+  );
+
+  if (!isInitialized) return <TeamDetailSkeleton />;
 
   const owned = teamStickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
   const progress = teamStickers.length > 0 ? owned / teamStickers.length : 0;
@@ -44,6 +53,32 @@ export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
       />
+    </SafeAreaView>
+  );
+}
+
+function TeamDetailSkeleton() {
+  return (
+    <SafeAreaView
+      accessible
+      accessibilityLabel="Carregando..."
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
+      <View style={{ backgroundColor: colors.primary }}>
+        <SkeletonBox width="100%" height={6} borderRadius={0} />
+      </View>
+      <View style={{ flexDirection: 'row', padding: spacing.sm + 4, gap: spacing.md, backgroundColor: colors.white }}>
+        <SkeletonBox width={80} height={16} />
+        <SkeletonBox width={60} height={16} />
+        <SkeletonBox width={70} height={16} />
+      </View>
+      <View style={{ padding: spacing.sm, flexDirection: 'row', flexWrap: 'wrap' }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(i => (
+          <View key={i} style={{ width: '20%', padding: 4 }}>
+            <SkeletonBox width="100%" height={60} borderRadius={radius.sm} />
+          </View>
+        ))}
+      </View>
     </SafeAreaView>
   );
 }

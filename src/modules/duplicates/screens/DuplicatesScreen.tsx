@@ -9,7 +9,9 @@ import {
   Share,
 } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { SearchInput } from '@shared/components/SearchInput';
+import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
 import { colors, spacing, radius, typography } from '@core/theme';
 import { FlagImage } from '@shared/components/FlagImage';
@@ -17,6 +19,7 @@ import { FlagImage } from '@shared/components/FlagImage';
 export function DuplicatesScreen() {
   const [query, setQuery] = useState('');
   const { figurinhas, selecoes, collection } = useStickerStore();
+  const { trackedTypes } = useUserSettingsStore();
 
   const sections = useMemo(() => {
     const q = query.toLowerCase();
@@ -26,12 +29,13 @@ export function DuplicatesScreen() {
         const duplicates = figurinhas.filter(f => {
           const isDuplicate = (collection[f.id] ?? 'missing') === 'duplicate';
           const matchesSelecao = f.selecao_id === selecao.id;
+          const matchesType = !trackedTypes || trackedTypes.includes(f.type);
           const matchesQuery =
             !q ||
             f.numero.toLowerCase().includes(q) ||
             selecao.nome.toLowerCase().includes(q) ||
             selecao.codigo_fifa.toLowerCase().includes(q);
-          return isDuplicate && matchesSelecao && matchesQuery;
+          return isDuplicate && matchesSelecao && matchesType && matchesQuery;
         });
         return {
           title: selecao.nome,
@@ -42,7 +46,7 @@ export function DuplicatesScreen() {
         };
       })
       .filter(s => s.data.length > 0);
-  }, [figurinhas, selecoes, collection, query]);
+  }, [figurinhas, selecoes, collection, query, trackedTypes]);
 
   const total = sections.reduce((acc, s) => acc + s.count, 0);
 
@@ -62,11 +66,11 @@ export function DuplicatesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🔄 Repetidas</Text>
-        <Text style={styles.subtitle}>
-          {total} figurinhas · {sections.length} seleções
-        </Text>
+      <ScreenHeader
+        title="🔄 Repetidas"
+        subtitle={`${total} figurinhas · ${sections.length} seleções`}
+      />
+      <View style={styles.searchBox}>
         <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar..." />
       </View>
       <SectionList
@@ -120,9 +124,7 @@ export function DuplicatesScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.primary },
-  header: { backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg },
-  title: { ...typography.h1, color: colors.white },
-  subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  searchBox: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
   sectionHeader: {
     flexDirection: 'row',

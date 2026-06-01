@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { collectionService } from '@shared/services/collectionService';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
+import { offlineQueueService } from '@shared/services/offlineQueueService';
+import { useSyncStore } from '@shared/store/syncStore';
 import { logger } from '@shared/utils/logger';
-import type { StickerStatus, UserCollection, Selecao, Figurinha, Album } from '@shared/types';
+import type { StickerStatus, UserCollection, Selecao, Figurinha, Album, UserAlbum } from '@shared/types';
 
 const STATUS_CYCLE: Record<StickerStatus, StickerStatus> = {
   missing: 'owned',
@@ -15,9 +17,12 @@ interface CatalogState {
   selecoes: Selecao[];
   figurinhas: Figurinha[];
   collection: UserCollection;
+  // Todas as coleções do usuário (para indicador de troca entre álbuns)
+  allCollections: Record<string, UserCollection>; // userAlbumId → collection
+  userAlbums: UserAlbum[];
+  activeUserAlbumId: string | null;
   isLoading: boolean;
   isInitialized: boolean;
-  // userId para sync na nuvem (null = modo offline)
   syncUserId: string | null;
 
   // Actions
@@ -27,8 +32,11 @@ interface CatalogState {
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
   setSyncUserId: (userId: string | null) => void;
+  setUserAlbums: (albums: UserAlbum[]) => void;
+  setActiveUserAlbum: (userAlbumId: string | null) => void;
+  setAllCollections: (all: Record<string, UserCollection>) => void;
   loadCollection: () => Promise<void>;
-  loadCloudCollection: (userId: string) => Promise<UserCollection>;
+  loadCloudCollection: (userAlbumId: string) => Promise<UserCollection>;
   applyCollection: (collection: UserCollection) => Promise<void>;
   toggleSticker: (figurinhaId: string) => Promise<void>;
   setStatus: (figurinhaId: string, status: StickerStatus) => Promise<void>;
@@ -37,6 +45,9 @@ interface CatalogState {
   // Computed helpers
   getStatus: (figurinhaId: string) => StickerStatus;
   getStats: () => { total: number; owned: number; missing: number; duplicate: number };
+  // Retorna o userAlbumId de outra coleção que tem esta figurinha como 'duplicate'
+  // enquanto na coleção ativa ela está 'missing'
+  getTradeSource: (figurinhaId: string) => string | null;
 }
 
 export const useStickerStore = create<CatalogState>((set, get) => ({
@@ -44,6 +55,9 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
   selecoes: [],
   figurinhas: [],
   collection: {},
+  allCollections: {},
+  userAlbums: [],
+  activeUserAlbumId: null,
   isLoading: false,
   isInitialized: false,
   syncUserId: null,
@@ -54,6 +68,9 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
   setLoading: isLoading => set({ isLoading }),
   setInitialized: isInitialized => set({ isInitialized }),
   setSyncUserId: syncUserId => set({ syncUserId }),
+  setUserAlbums: userAlbums => set({ userAlbums }),
+  setActiveUserAlbum: activeUserAlbumId => set({ activeUserAlbumId }),
+  setAllCollections: allCollections => set({ allCollections }),
 
   loadCollection: async () => {
     try {
@@ -65,53 +82,80 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     }
   },
 
-  loadCloudCollection: async (userId: string) => {
-    return await cloudCollectionService.load(userId);
+  loadCloudCollection: async (userAlbumId: string) => {
+    return await cloudCollectionService.load(userAlbumId);
   },
 
   applyCollection: async (collection: UserCollection) => {
-    set({ collection });
+    const { activeUserAlbumId, allCollections } = get();
+    set({
+      collection,
+      allCollections: activeUserAlbumId
+        ? { ...allCollections, [activeUserAlbumId]: collection }
+        : allCollections,
+    });
     await collectionService.save(collection);
   },
 
   toggleSticker: async (figurinhaId: string) => {
-    const { collection, syncUserId } = get();
+    const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
     const current = collection[figurinhaId] ?? 'missing';
     const next = STATUS_CYCLE[current];
     const updated = { ...collection, [figurinhaId]: next };
-    set({ collection: updated });
+    set({
+      collection: updated,
+      allCollections: activeUserAlbumId
+        ? { ...allCollections, [activeUserAlbumId]: updated }
+        : allCollections,
+    });
     try {
       await collectionService.save(updated);
-      if (syncUserId) {
-        await cloudCollectionService.upsertOne(syncUserId, figurinhaId, next);
+      if (activeUserAlbumId && syncUserId) {
+        if (useSyncStore.getState().status === 'offline') {
+          if (next !== 'missing') {
+            await offlineQueueService.enqueue({
+              userAlbumId: activeUserAlbumId,
+              figurinhaId,
+              status: next,
+              createdAt: Date.now(),
+            });
+          }
+        } else {
+          await cloudCollectionService.upsertOne(activeUserAlbumId, figurinhaId, next, syncUserId);
+        }
       }
     } catch (error) {
       logger.error('Failed to persist collection:', error);
-      set({ collection }); // rollback
+      set({ collection });
     }
   },
 
   setStatus: async (figurinhaId: string, status: StickerStatus) => {
-    const { collection, syncUserId } = get();
+    const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
     const updated = { ...collection, [figurinhaId]: status };
-    set({ collection: updated });
+    set({
+      collection: updated,
+      allCollections: activeUserAlbumId
+        ? { ...allCollections, [activeUserAlbumId]: updated }
+        : allCollections,
+    });
     try {
       await collectionService.save(updated);
-      if (syncUserId) {
-        await cloudCollectionService.upsertOne(syncUserId, figurinhaId, status);
+      if (activeUserAlbumId && syncUserId) {
+        await cloudCollectionService.upsertOne(activeUserAlbumId, figurinhaId, status, syncUserId);
       }
     } catch (error) {
       logger.error('Failed to persist collection:', error);
-      set({ collection }); // rollback
+      set({ collection });
     }
   },
 
   resetCollection: async () => {
-    const { syncUserId } = get();
+    const { activeUserAlbumId, syncUserId } = get();
     set({ collection: {} });
     await collectionService.reset();
-    if (syncUserId) {
-      await cloudCollectionService.replaceAll(syncUserId, {});
+    if (activeUserAlbumId && syncUserId) {
+      await cloudCollectionService.replaceAll(activeUserAlbumId, {}, syncUserId);
     }
   },
 
@@ -130,5 +174,19 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
       else if (status === 'duplicate') duplicate++;
     }
     return { total, owned, duplicate, missing: total - owned - duplicate };
+  },
+
+  getTradeSource: (figurinhaId: string): string | null => {
+    const { collection, allCollections, activeUserAlbumId, userAlbums } = get();
+    const activeStatus = collection[figurinhaId] ?? 'missing';
+    if (activeStatus !== 'missing') return null;
+    for (const [albumId, col] of Object.entries(allCollections)) {
+      if (albumId === activeUserAlbumId) continue;
+      if ((col[figurinhaId] ?? 'missing') === 'duplicate') {
+        const album = userAlbums.find(a => a.id === albumId);
+        return album?.name ?? albumId;
+      }
+    }
+    return null;
   },
 }));

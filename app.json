@@ -12,10 +12,18 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.manera.albumcopa2026"
+      "bundleIdentifier": "com.manera.albumcopa2026",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.manera.albumcopa2026",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -27,6 +35,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "privacyPolicyUrl": "https://manerar-code.github.io/album-copa-2026/privacy-policy",
     "extra": {
       "eas": {
         "projectId": "758486d3-d924-4d75-b91a-a32c41f7ae0b"
@@ -34,7 +43,8 @@
     },
     "owner": "manerar",
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-sqlite"
     ]
   }
 }

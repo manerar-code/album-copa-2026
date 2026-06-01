@@ -10,4 +10,6 @@ config.resolver.alias = {
   '@assets': path.resolve(__dirname, 'src/assets'),
 };
 
+config.resolver.assetExts.push('wasm');
+
 module.exports = config;

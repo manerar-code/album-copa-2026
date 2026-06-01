@@ -93,3 +93,13 @@ export function getFlagUrl(codigoFifa: string): string {
   const iso = getFlagIsoCode(codigoFifa);
   return iso ? `https://flagcdn.com/w40/${iso}.png` : '';
 }
+
+export function getFlagEmoji(codigoFifa: string): string {
+  const iso = getFlagIsoCode(codigoFifa);
+  if (!iso) return '';
+  const codePoints = iso
+    .toUpperCase()
+    .split('')
+    .map(char => 0x1F1E6 + (char.charCodeAt(0) - 65));
+  return String.fromCodePoint(...codePoints);
+}

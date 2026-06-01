@@ -1,0 +1,21 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SkeletonBox matches snapshot 1`] = `
+<View
+  style={
+    [
+      {
+        "backgroundColor": "#EAECF0",
+        "borderRadius": 8,
+        "height": 24,
+        "width": 200,
+      },
+      {
+        "opacity": 0.4,
+      },
+      undefined,
+    ]
+  }
+  testID="skeleton-snap"
+/>
+`;

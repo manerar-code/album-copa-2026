@@ -1,14 +1,21 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, SectionList, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, SectionList, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { SearchInput } from '@shared/components/SearchInput';
+import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
 import { colors, spacing, radius, typography } from '@core/theme';
 import { FlagImage } from '@shared/components/FlagImage';
+import { formatMissingList } from '../utils/formatMissingList';
+import { logger } from '@shared/utils/logger';
 
 export function MissingScreen() {
   const [query, setQuery] = useState('');
-  const { figurinhas, selecoes, collection } = useStickerStore();
+  const [feedback, setFeedback] = useState<'success' | 'error' | null>(null);
+  const { figurinhas, selecoes, collection, album } = useStickerStore();
+  const { trackedTypes } = useUserSettingsStore();
 
   const sections = useMemo(() => {
     const q = query.toLowerCase();
@@ -18,12 +25,13 @@ export function MissingScreen() {
         const missing = figurinhas.filter(f => {
           const isMissing = (collection[f.id] ?? 'missing') === 'missing';
           const matchesSelecao = f.selecao_id === selecao.id;
+          const matchesType = !trackedTypes || trackedTypes.includes(f.type);
           const matchesQuery =
             !q ||
             f.numero.toLowerCase().includes(q) ||
             selecao.nome.toLowerCase().includes(q) ||
             selecao.codigo_fifa.toLowerCase().includes(q);
-          return isMissing && matchesSelecao && matchesQuery;
+          return isMissing && matchesSelecao && matchesType && matchesQuery;
         });
         return {
           title: selecao.nome,
@@ -34,17 +42,59 @@ export function MissingScreen() {
         };
       })
       .filter(s => s.data.length > 0);
-  }, [figurinhas, selecoes, collection, query]);
+  }, [figurinhas, selecoes, collection, query, trackedTypes]);
 
   const total = sections.reduce((acc, s) => acc + s.count, 0);
 
+  const showFeedback = useCallback((type: 'success' | 'error') => {
+    setFeedback(type);
+    setTimeout(() => setFeedback(null), 2000);
+  }, []);
+
+  const handleExport = useCallback(async () => {
+    const formattedText = formatMissingList(
+      collection,
+      selecoes,
+      figurinhas,
+      album?.nome ?? 'Álbum',
+    );
+    try {
+      await Clipboard.setStringAsync(formattedText);
+      showFeedback('success');
+      logger.log('export:clipboard', { missingCount: total, filteredBySelecao: false });
+    } catch {
+      showFeedback('error');
+      logger.error('export:clipboard:error');
+    }
+  }, [collection, selecoes, figurinhas, album, total, showFeedback]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>❌ Faltantes</Text>
-        <Text style={styles.subtitle}>
-          {total} figurinhas · {sections.length} seleções
-        </Text>
+      <ScreenHeader
+        title="❌ Faltantes"
+        subtitle={`${total} figurinhas · ${sections.length} seleções`}
+        rightContent={
+          <TouchableOpacity
+            onPress={handleExport}
+            disabled={total === 0}
+            style={styles.exportBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Exportar lista de faltantes"
+          >
+            <Text style={[styles.exportBtnText, total === 0 && styles.exportBtnDisabled]}>
+              📋
+            </Text>
+          </TouchableOpacity>
+        }
+      />
+      {feedback && (
+        <View style={[styles.feedbackBar, feedback === 'error' && styles.feedbackBarError]}>
+          <Text style={styles.feedbackText}>
+            {feedback === 'success' ? '✅ Lista copiada!' : '❌ Erro ao copiar'}
+          </Text>
+        </View>
+      )}
+      <View style={styles.searchBox}>
         <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar..." />
       </View>
       <SectionList
@@ -69,7 +119,6 @@ export function MissingScreen() {
           </View>
         )}
         renderItem={({ index, section }) => {
-          // Group chips in rows
           if (index !== 0) return null;
           return (
             <View style={styles.chipsContainer}>
@@ -88,9 +137,7 @@ export function MissingScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.primary },
-  header: { backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg },
-  title: { ...typography.h1, color: colors.white },
-  subtitle: { ...typography.caption, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  searchBox: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
   sectionHeader: {
     flexDirection: 'row',
@@ -118,4 +165,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   chipText: { fontSize: 12, fontWeight: '600', color: colors.textPrimary },
+  exportBtn: { padding: 4 },
+  exportBtnText: { fontSize: 18 },
+  exportBtnDisabled: { opacity: 0.3 },
+  feedbackBar: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 6,
+    paddingHorizontal: spacing.md,
+  },
+  feedbackBarError: {
+    backgroundColor: '#F44336',
+  },
+  feedbackText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });

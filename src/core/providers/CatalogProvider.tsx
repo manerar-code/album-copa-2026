@@ -1,14 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { catalogService } from '@modules/album/services/catalogService';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useAuthStore } from '@modules/auth/store/authStore';
 import { authService } from '@modules/auth/services/authService';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
+import { userAlbumService } from '@shared/services/userAlbumService';
 import { supabase } from '@shared/services/supabase';
 import { Loading } from '@shared/components/Loading';
+import { SyncStatusBar } from '@shared/components/SyncStatusBar';
 import { MergeDialog } from '@modules/auth/components/MergeDialog';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { offlineQueueService } from '@shared/services/offlineQueueService';
+import { syncService } from '@shared/services/syncService';
 import { logger } from '@shared/utils/logger';
+import { STORAGE_KEYS } from '@shared/storage/keys';
+import { OnboardingContext } from './OnboardingContext';
 import { colors, spacing, typography } from '@core/theme';
 import type { MergeChoice } from '@modules/auth/components/MergeDialog';
 import type { UserCollection } from '@shared/types';
@@ -17,14 +25,31 @@ interface MergeState {
   visible: boolean;
   localCollection: UserCollection;
   cloudCollection: UserCollection;
-  userId: string;
+  userAlbumId: string;
 }
 
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [mergeState, setMergeState] = useState<MergeState | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const store = useStickerStore();
   const authStore = useAuthStore();
+  const userSettings = useUserSettingsStore();
+  const bootstrapSyncedUserId = useRef<string | null>(null);
+
+  const completeOnboarding = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_DONE, 'true');
+    } catch {}
+    setShowOnboarding(false);
+  }, []);
+
+  const restartTutorial = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_DONE, '');
+    } catch {}
+    setShowOnboarding(true);
+  }, []);
 
   // ─── Catálogo ────────────────────────────────────────────────────────────
   const checkForUpdates = useCallback(
@@ -73,27 +98,49 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Auth ─────────────────────────────────────────────────────────────────
   const handleUserLogin = useCallback(
-    async (userId: string) => {
+    async (userId: string, userName: string, isNewLogin = false) => {
       store.setSyncUserId(userId);
-      const local = await store.loadCloudCollection(userId).catch(() => null);
-      const localCollection = store.collection;
 
-      const cloudCollection = local ?? {};
+      // Carrega ou cria user_albums
+      let albums = await userAlbumService.list(userId).catch(() => []);
+      if (albums.length === 0) {
+        const created = await userAlbumService.create(userId, `Álbum do ${userName.split(' ')[0]}`);
+        albums = [created];
+      }
+      store.setUserAlbums(albums);
+
+      const activeAlbum = albums[0];
+      store.setActiveUserAlbum(activeAlbum.id);
+
+      // Carrega todas as coleções em paralelo
+      const allEntries = await Promise.all(
+        albums.map(async a => {
+          const col = await cloudCollectionService.load(a.id).catch(() => ({}));
+          return [a.id, col] as [string, UserCollection];
+        }),
+      );
+      const allCollections = Object.fromEntries(allEntries);
+      store.setAllCollections(allCollections);
+
+      const cloudCollection = allCollections[activeAlbum.id] ?? {};
+      const localCollection = store.collection;
       const localCount = Object.values(localCollection).filter(s => s !== 'missing').length;
       const cloudCount = Object.values(cloudCollection).filter(s => s !== 'missing').length;
 
+      if (!isNewLogin) {
+        if (cloudCount > 0) await store.applyCollection(cloudCollection);
+        return;
+      }
+
+      // Novo login: resolve conflito
       if (localCount > 0 && cloudCount > 0) {
-        // Tem dados nos dois lados — pergunta ao usuário
-        setMergeState({ visible: true, localCollection, cloudCollection, userId });
+        setMergeState({ visible: true, localCollection, cloudCollection, userAlbumId: activeAlbum.id });
       } else if (cloudCount > 0) {
-        // Só na nuvem — usa nuvem
         await store.applyCollection(cloudCollection);
       } else if (localCount > 0) {
-        // Só local — migra para nuvem
-        await cloudCollectionService.replaceAll(userId, localCollection);
+        await cloudCollectionService.replaceAll(activeAlbum.id, localCollection, userId);
         logger.log('Local collection migrated to cloud');
       }
-      // Se ambos vazios, não faz nada
     },
     [store],
   );
@@ -101,7 +148,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const handleMergeChoice = useCallback(
     async (choice: MergeChoice) => {
       if (!mergeState) return;
-      const { localCollection, cloudCollection, userId } = mergeState;
+      const { localCollection, cloudCollection, userAlbumId } = mergeState;
       setMergeState(null);
 
       let final: UserCollection;
@@ -114,7 +161,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       }
 
       await store.applyCollection(final);
-      await cloudCollectionService.replaceAll(userId, final);
+      if (store.syncUserId) {
+        await cloudCollectionService.replaceAll(userAlbumId, final, store.syncUserId);
+      }
     },
     [mergeState, store],
   );
@@ -124,20 +173,29 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     const bootstrap = async () => {
       authStore.setLoading(true);
 
-      // Verifica sessão salva
+      // Lê flag de onboarding em paralelo (não bloqueia o bootstrap)
+      AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_DONE).then(val => {
+        if (val !== 'true') setShowOnboarding(true);
+      });
+
+      // Inicializa fila offline antes de carregar coleção local
+      await offlineQueueService.init().catch(() => {});
+
       const user = await authService.getCurrentUser();
-      if (user) {
-        authStore.setUser(user);
-      }
+      if (user) authStore.setUser(user);
       authStore.setLoading(false);
 
-      // Carrega catálogo e coleção local
       await initializeCatalog();
       await store.loadCollection();
 
-      // Se logado, sincroniza com nuvem
+      // Carrega configurações de tipos do usuário
+      const allTypes = Array.from(new Set(store.figurinhas.map(f => f.type).filter(Boolean)));
+      await userSettings.loadSettings(allTypes);
+
       if (user) {
-        await handleUserLogin(user.id);
+        bootstrapSyncedUserId.current = user.id;
+        await handleUserLogin(user.id, user.name);
+        syncService.start(user.id);
       }
     };
 
@@ -158,10 +216,18 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           avatar_url: u.user_metadata?.avatar_url,
         };
         authStore.setUser(user);
-        await handleUserLogin(user.id);
+        const isNewLogin = bootstrapSyncedUserId.current !== user.id;
+        bootstrapSyncedUserId.current = null;
+        await handleUserLogin(user.id, user.name, isNewLogin);
       } else if (event === 'SIGNED_OUT') {
+        syncService.stop();
+        await offlineQueueService.clear();
         authStore.setUser(null);
         store.setSyncUserId(null);
+        store.setUserAlbums([]);
+        store.setActiveUserAlbum('');
+        store.setAllCollections({});
+        await store.applyCollection({});
       }
     });
 
@@ -177,12 +243,13 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!store.isInitialized || authStore.isLoading) {
+  if (authStore.isLoading) {
     return <Loading />;
   }
 
   return (
-    <>
+    <OnboardingContext.Provider value={{ showOnboarding, completeOnboarding, restartTutorial }}>
+      <SyncStatusBar />
       {children}
       <MergeDialog
         visible={mergeState?.visible ?? false}
@@ -194,7 +261,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         }
         onChoice={handleMergeChoice}
       />
-    </>
+    </OnboardingContext.Provider>
   );
 }
 

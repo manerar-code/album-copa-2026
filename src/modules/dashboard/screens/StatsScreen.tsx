@@ -1,18 +1,23 @@
 import React, { useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet, SafeAreaView } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore, displayType } from '@shared/store/userSettingsStore';
+import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { ProgressBar } from '@shared/components/ProgressBar';
+import { SkeletonBox } from '@shared/components/SkeletonBox';
 import { FlagImage } from '@shared/components/FlagImage';
 import { colors, spacing, radius, shadows, typography } from '@core/theme';
 
 export function StatsScreen() {
-  const { figurinhas, selecoes, collection } = useStickerStore();
+  const { figurinhas, selecoes, collection, isInitialized } = useStickerStore();
+  const { trackedTypes } = useUserSettingsStore();
 
   // Estatísticas por tipo
   const typeStats = useMemo(() => {
     const map = new Map<string, { total: number; owned: number; duplicate: number }>();
     for (const f of figurinhas) {
-      const t = f.type || 'Sem tipo';
+      if (trackedTypes && !trackedTypes.includes(f.type)) continue;
+      const t = displayType(f.type) || 'Sem tipo';
       const status = collection[f.id] ?? 'missing';
       const e = map.get(t) ?? { total: 0, owned: 0, duplicate: 0 };
       e.total++;
@@ -27,7 +32,7 @@ export function StatsScreen() {
         pct: s.total > 0 ? (s.owned + s.duplicate) / s.total : 0,
       }))
       .sort((a, b) => b.pct - a.pct);
-  }, [figurinhas, collection]);
+  }, [figurinhas, collection, trackedTypes]);
 
   // Estatísticas por seleção
   const teamStats = useMemo(() => {
@@ -41,6 +46,8 @@ export function StatsScreen() {
       })
       .sort((a, b) => b.pct - a.pct);
   }, [figurinhas, selecoes, collection]);
+
+  if (!isInitialized) return <StatsSkeleton />;
 
   const totalOwned = teamStats.reduce((a, t) => a + t.owned, 0);
   const totalStickers = teamStats.reduce((a, t) => a + t.total, 0);
@@ -84,14 +91,15 @@ export function StatsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <ScreenHeader title="📊 Estatísticas" />
       <SectionList
         sections={sections as never[]}
         keyExtractor={(item: unknown, i) => String(i)}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.title}>📊 Estatísticas</Text>
+          <View style={styles.summarySection}>
+            <Text style={styles.sectionTitle}>Resumo</Text>
             <View style={styles.summaryRow}>
               <SummaryCard label="Figurinhas" value={`${totalOwned}/${totalStickers}`} />
               <SummaryCard
@@ -102,6 +110,7 @@ export function StatsScreen() {
             </View>
           </View>
         }
+
         renderSectionHeader={({ section: { title } }: { section: { title: string } }) => (
           <Text style={styles.sectionTitle}>{title}</Text>
         )}
@@ -113,6 +122,36 @@ export function StatsScreen() {
           section: { renderItem: (args: { item: unknown }) => React.ReactNode };
         }) => section.renderItem({ item }) as React.ReactElement}
       />
+    </SafeAreaView>
+  );
+}
+
+function StatsSkeleton() {
+  return (
+    <SafeAreaView
+      accessible
+      accessibilityLabel="Carregando..."
+      style={{ flex: 1, backgroundColor: colors.primary }}
+    >
+      <View style={{ backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg }}>
+        <SkeletonBox width="50%" height={24} style={{ marginBottom: spacing.md }} />
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <SkeletonBox width="30%" height={64} borderRadius={radius.md} />
+          <SkeletonBox width="30%" height={64} borderRadius={radius.md} />
+          <SkeletonBox width="30%" height={64} borderRadius={radius.md} />
+        </View>
+      </View>
+      <View style={{ backgroundColor: colors.background, flex: 1, paddingTop: spacing.sm }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+          <SkeletonBox
+            key={i}
+            width="90%"
+            height={64}
+            borderRadius={radius.md}
+            style={{ alignSelf: 'center', marginBottom: spacing.sm }}
+          />
+        ))}
+      </View>
     </SafeAreaView>
   );
 }
@@ -129,8 +168,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.primary },
   list: { flexGrow: 1, paddingBottom: spacing.xl },
-  header: { backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg },
-  title: { ...typography.h1, color: colors.white, marginBottom: spacing.md },
+  summarySection: { backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg },
   summaryRow: { flexDirection: 'row', gap: spacing.sm },
   summaryCard: {
     flex: 1,

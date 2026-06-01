@@ -3,13 +3,12 @@ import { handleError } from './errorHandler';
 import type { UserCollection, StickerStatus } from '@shared/types';
 
 export const cloudCollectionService = {
-  /** Carrega coleção do usuário logado do Supabase */
-  async load(userId: string): Promise<UserCollection> {
+  async load(userAlbumId: string): Promise<UserCollection> {
     try {
       const { data, error } = await supabase
         .from('user_collections')
         .select('figurinha_id, status')
-        .eq('user_id', userId);
+        .eq('user_album_id', userAlbumId);
       if (error) throw error;
       const collection: UserCollection = {};
       for (const row of data ?? []) {
@@ -21,44 +20,42 @@ export const cloudCollectionService = {
     }
   },
 
-  /** Persiste um único status de figurinha no Supabase */
-  async upsertOne(userId: string, figurinhaId: string, status: StickerStatus): Promise<void> {
+  async upsertOne(userAlbumId: string, figurinhaId: string, status: StickerStatus, userId: string): Promise<void> {
     try {
       if (status === 'missing') {
-        // 'missing' é o default — apaga o registro para economizar espaço
         await supabase
           .from('user_collections')
           .delete()
-          .eq('user_id', userId)
+          .eq('user_album_id', userAlbumId)
           .eq('figurinha_id', figurinhaId);
       } else {
-        await supabase
+        const { error } = await supabase
           .from('user_collections')
           .upsert(
             {
               user_id: userId,
+              user_album_id: userAlbumId,
               figurinha_id: figurinhaId,
               status,
               updated_at: new Date().toISOString(),
             },
-            { onConflict: 'user_id,figurinha_id' },
+            { onConflict: 'user_album_id,figurinha_id' },
           );
+        if (error) throw error;
       }
     } catch (error) {
       throw handleError(error, 'cloudCollectionService.upsertOne');
     }
   },
 
-  /** Substitui toda a coleção na nuvem (usado na migração) */
-  async replaceAll(userId: string, collection: UserCollection): Promise<void> {
+  async replaceAll(userAlbumId: string, collection: UserCollection, userId: string): Promise<void> {
     try {
-      // Apaga tudo do usuário
-      await supabase.from('user_collections').delete().eq('user_id', userId);
-      // Insere os não-missing
+      await supabase.from('user_collections').delete().eq('user_album_id', userAlbumId);
       const rows = Object.entries(collection)
         .filter(([, status]) => status !== 'missing')
         .map(([figurinha_id, status]) => ({
           user_id: userId,
+          user_album_id: userAlbumId,
           figurinha_id,
           status,
           updated_at: new Date().toISOString(),
@@ -71,7 +68,6 @@ export const cloudCollectionService = {
     }
   },
 
-  /** Mescla local + nuvem: para cada figurinha, o status mais "avançado" vence */
   merge(local: UserCollection, cloud: UserCollection): UserCollection {
     const priority: Record<StickerStatus, number> = { missing: 0, owned: 1, duplicate: 2 };
     const all = new Set([...Object.keys(local), ...Object.keys(cloud)]);

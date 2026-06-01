@@ -64,6 +64,7 @@ module.exports = [
     rules: {
       ...tsPlugin.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-require-imports': 'off',
       'no-console': 'off',
     },
   },

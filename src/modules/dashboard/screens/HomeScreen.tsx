@@ -1,9 +1,15 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState, useCallback, useContext } from 'react';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useAuthStore } from '@modules/auth/store/authStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { ProgressBar } from '@shared/components/ProgressBar';
+import { ScreenHeader } from '@shared/components/ScreenHeader';
+import { SkeletonBox } from '@shared/components/SkeletonBox';
+import { HelpModal } from '@shared/components/HelpModal';
+import { OnboardingContext } from '@core/providers/OnboardingContext';
 import { colors, spacing, radius, shadows, typography } from '@core/theme';
 import { FlagImage } from '@shared/components/FlagImage';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -13,14 +19,47 @@ type HomeNavProp = BottomTabNavigationProp<BottomTabParamList, 'Home'>;
 
 export function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
-  const { getStats, selecoes, figurinhas, collection } = useStickerStore();
+  const { selecoes, figurinhas, collection, applyCollection, userAlbums, activeUserAlbumId, isInitialized } = useStickerStore();
   const { user } = useAuthStore();
-  const stats = getStats();
+  const { trackedTypes } = useUserSettingsStore();
+  const { restartTutorial } = useContext(OnboardingContext);
+  const [refreshing, setRefreshing] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    if (!activeUserAlbumId) return;
+    setRefreshing(true);
+    try {
+      const cloud = await cloudCollectionService.load(activeUserAlbumId);
+      await applyCollection(cloud);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [activeUserAlbumId, applyCollection]);
+
+  // Figurinhas filtradas pelos tipos selecionados
+  const trackedFigurinhas = useMemo(() => {
+    if (!trackedTypes) return figurinhas;
+    return figurinhas.filter(f => trackedTypes.includes(f.type));
+  }, [figurinhas, trackedTypes]);
+
+  const stats = useMemo(() => {
+    const total = trackedFigurinhas.length;
+    let owned = 0;
+    let duplicate = 0;
+    for (const f of trackedFigurinhas) {
+      const status = collection[f.id] ?? 'missing';
+      if (status === 'owned') owned++;
+      else if (status === 'duplicate') duplicate++;
+    }
+    return { total, owned, duplicate, missing: total - owned - duplicate };
+  }, [trackedFigurinhas, collection]);
+
   const pct = stats.total > 0 ? stats.owned / stats.total : 0;
 
   const typeStats = useMemo(() => {
     const map = new Map<string, { total: number; owned: number }>();
-    for (const f of figurinhas) {
+    for (const f of trackedFigurinhas) {
       if (!f.type) continue;
       const status = collection[f.id] ?? 'missing';
       const entry = map.get(f.type) ?? { total: 0, owned: 0 };
@@ -31,36 +70,43 @@ export function HomeScreen() {
     return Array.from(map.entries())
       .map(([type, s]) => ({ type, ...s }))
       .sort((a, b) => b.owned / (b.total || 1) - a.owned / (a.total || 1));
-  }, [figurinhas, collection]);
+  }, [trackedFigurinhas, collection]);
 
-  const topTeams = useMemo(() => {
+  // Seleções com repetidas
+  const teamsWithDuplicates = useMemo(() => {
     return selecoes
       .map(s => {
-        const stickers = figurinhas.filter(f => f.selecao_id === s.id);
+        const stickers = trackedFigurinhas.filter(f => f.selecao_id === s.id);
         const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
         const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
         return { ...s, total: stickers.length, owned, dup };
       })
-      .filter(s => s.owned > 0)
-      .sort((a, b) => b.owned / (b.total || 1) - a.owned / (a.total || 1))
-      .slice(0, 5);
-  }, [figurinhas, selecoes, collection]);
+      .filter(s => s.dup > 0)
+      .sort((a, b) => b.dup - a.dup);
+  }, [trackedFigurinhas, selecoes, collection]);
 
   const firstName = user?.name?.split(' ')[0] ?? 'Colecionador';
 
+  if (!isInitialized) return <HomeSkeleton />;
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.white} />}
+      >
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.greeting}>Olá, {firstName}! 👋</Text>
-              <Text style={styles.title}>⚽ Álbum Copa 2026</Text>
-            </View>
-          </View>
+        <ScreenHeader
+          title={`⚽ Olá, ${firstName}!`}
+          subtitle="Álbum Copa 2026"
+          onHelp={() => setHelpVisible(true)}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+        />
 
-          {/* Card de progresso principal */}
+        {/* Card de progresso */}
+        <View style={styles.progressSection}>
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
               <View>
@@ -100,15 +146,15 @@ export function HomeScreen() {
             </>
           )}
 
-          {/* Top seleções */}
-          {topTeams.length > 0 && (
+          {/* Repetidas por seleção */}
+          {teamsWithDuplicates.length > 0 && (
             <>
               <SectionTitle
-                title="Seleções em destaque"
+                title="Repetidas por Seleção"
                 action="Ver todas"
-                onAction={() => navigation.navigate('Album')}
+                onAction={() => navigation.navigate('Duplicates')}
               />
-              {topTeams.map(team => (
+              {teamsWithDuplicates.map(team => (
                 <TouchableOpacity
                   key={team.id}
                   style={[styles.teamRow, shadows.card]}
@@ -130,11 +176,9 @@ export function HomeScreen() {
                       height={4}
                     />
                   </View>
-                  {team.dup > 0 && (
-                    <View style={styles.dupBadge}>
-                      <Text style={styles.dupBadgeText}>{team.dup}</Text>
-                    </View>
-                  )}
+                  <View style={styles.dupBadge}>
+                    <Text style={styles.dupBadgeText}>{team.dup} rep</Text>
+                  </View>
                   <Text style={styles.arrow}>›</Text>
                 </TouchableOpacity>
               ))}
@@ -142,6 +186,8 @@ export function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} onRestartTutorial={restartTutorial} />
     </SafeAreaView>
   );
 }
@@ -201,27 +247,41 @@ function TypeCard({ label, owned, total }: { label: string; owned: number; total
   );
 }
 
+function HomeSkeleton() {
+  return (
+    <SafeAreaView
+      accessible
+      accessibilityLabel="Carregando..."
+      style={{ flex: 1, backgroundColor: colors.primary }}
+    >
+      <View style={{ backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.xl }}>
+        <SkeletonBox width="60%" height={24} style={{ marginBottom: spacing.sm }} />
+        <SkeletonBox width="40%" height={14} style={{ marginBottom: spacing.md }} />
+        <SkeletonBox width="100%" height={88} borderRadius={radius.lg} />
+      </View>
+      <View style={{ padding: spacing.md, gap: spacing.md }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
+          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
+          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
+          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
+        </View>
+        <SkeletonBox width="100%" height={64} borderRadius={radius.md} />
+        <SkeletonBox width="100%" height={64} borderRadius={radius.md} />
+        <SkeletonBox width="100%" height={64} borderRadius={radius.md} />
+      </View>
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.primary },
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
+  progressSection: {
     backgroundColor: colors.primary,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xl,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-    paddingRight: 48, // espaço para o avatar flutuante
-  },
-  greeting: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
-    marginBottom: 2,
-  },
-  title: { ...typography.h1, color: colors.white },
   progressCard: {
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: radius.lg,
@@ -301,11 +361,9 @@ const styles = StyleSheet.create({
   dupBadge: {
     backgroundColor: colors.accent,
     borderRadius: radius.full,
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
   },
-  dupBadgeText: { fontSize: 10, fontWeight: '800', color: colors.primary },
+  dupBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
   arrow: { color: colors.border, fontSize: 22 },
 });

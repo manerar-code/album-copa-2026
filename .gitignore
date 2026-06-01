@@ -44,3 +44,9 @@ coverage/
 # generated native folders
 /ios
 /android
+.vercel
+.env*
+
+# EAS / Store credentials
+secrets/
+!secrets/.gitkeep
