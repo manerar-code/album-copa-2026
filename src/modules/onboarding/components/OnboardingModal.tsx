@@ -8,7 +8,11 @@ import {
   BackHandler,
   Dimensions,
 } from 'react-native';
-import { colors, spacing, radius, typography } from '@core/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, spacing, radius, gradients } from '@core/theme';
+import { GlassCard } from '@shared/components/GlassCard';
+import { GoldButton } from '@shared/components/GoldButton';
+import { CromoCard } from '@shared/components/CromoCard';
 import type { StickerStatus } from '@shared/types';
 
 interface OnboardingModalProps {
@@ -18,152 +22,141 @@ interface OnboardingModalProps {
 
 type SlideIndex = 0 | 1 | 2;
 
-const stateInfo: { label: string; status: StickerStatus }[] = [
-  { label: 'Faltando', status: 'missing' },
-  { label: 'Tenho', status: 'owned' },
-  { label: 'Repetida', status: 'duplicate' },
+// ── Slide 1 ────────────────────────────────────────────────
+const DEMO_STATES: StickerStatus[] = ['missing', 'owned', 'duplicate'];
+const DEMO_CHIPS: { k: StickerStatus; e: string; t: string; c: string }[] = [
+  { k: 'missing', e: '❌', t: 'Faltando', c: colors.red },
+  { k: 'owned', e: '✅', t: 'Tenho', c: colors.green },
+  { k: 'duplicate', e: '🔄', t: 'Repetida', c: colors.gold },
 ];
-
-const tabBarItems = [
-  { icon: '🏠', label: 'Home', description: 'Visão geral do seu progresso' },
-  { icon: '📖', label: 'Álbum', description: 'Todas as seleções e figurinhas' },
-  { icon: '🔍', label: 'Faltantes', description: 'Figurinhas que ainda precisa' },
-  { icon: '🔁', label: 'Repetidas', description: 'Figurinhas para trocar' },
-  { icon: '📊', label: 'Stats', description: 'Estatísticas detalhadas' },
-];
-
-function DemoStickerCard() {
-  const [demoStatus, setDemoStatus] = useState<StickerStatus>('missing');
-
-  const stateColors: Record<StickerStatus, { background: string; text: string; border?: string }> = {
-    missing: { background: colors.missing.background, text: colors.missing.text },
-    owned: { background: colors.owned.background, text: colors.owned.text, border: colors.owned.border },
-    duplicate: { background: colors.duplicate.background, text: colors.duplicate.text, border: colors.duplicate.border },
-  };
-
-  const cycleState = () => {
-    setDemoStatus(prev => {
-      if (prev === 'missing') return 'owned';
-      if (prev === 'owned') return 'duplicate';
-      return 'missing';
-    });
-  };
-
-  const current = stateColors[demoStatus];
-
-  return (
-    <View style={styles.demoCardContainer}>
-      <TouchableOpacity
-        style={[
-          styles.demoCard,
-          { backgroundColor: current.background },
-          current.border ? { borderWidth: 2, borderColor: current.border } : undefined,
-        ]}
-        onPress={cycleState}
-        activeOpacity={0.7}
-        testID="demo-sticker-card"
-      >
-        <Text style={[styles.demoCardNumber, { color: current.text }]}>#42</Text>
-        <Text style={[styles.demoCardLabel, { color: current.text }]}>Neymar Jr.</Text>
-      </TouchableOpacity>
-      <Text style={styles.demoHint}>Toque na figurinha para alternar</Text>
-      <View style={styles.stateIndicator}>
-        {stateInfo.map(info => (
-          <View
-            key={info.status}
-            style={[
-              styles.stateDot,
-              {
-                backgroundColor: stateColors[info.status].background,
-                borderColor: stateColors[info.status].border || stateColors[info.status].text,
-                borderWidth: demoStatus === info.status ? 2 : 1,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.stateDotText,
-                { color: stateColors[info.status].text, fontWeight: demoStatus === info.status ? '700' : '400' },
-              ]}
-            >
-              {info.label}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
 
 function Slide1() {
+  const [idx, setIdx] = useState(1);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(p => (p + 1) % 3), 1800);
+    return () => clearInterval(t);
+  }, []);
+  const state = DEMO_STATES[idx];
+
   return (
-    <View style={styles.slide}>
-      <Text style={styles.slideTitle}>Como marcar figurinhas</Text>
-      <Text style={styles.slideDescription}>
-        Toque em uma figurinha para alternar entre os estados:
+    <View style={s.slide}>
+      <Text style={s.slideTitle}>Como marcar figurinhas</Text>
+      <Text style={s.slideDesc}>
+        Toque em uma figurinha para alternar{'\n'}entre os três estados.
       </Text>
-      <DemoStickerCard />
-      <Text style={styles.slideDescription}>
-        Missing → Owned → Duplicate → Missing{'\n'}O ciclo completo com um toque!
-      </Text>
+
+      <View style={{ alignItems: 'center', marginBottom: 14 }}>
+        <CromoCard
+          numero="42"
+          descricao="A. Ferreira"
+          pos="ATA"
+          flag="🇧🇷"
+          f1="#1f8a4c"
+          f2="#0c4225"
+          state={state}
+          dupCount={2}
+          width={130}
+        />
+      </View>
+      <Text style={s.tapHint}>👆 Toque na figurinha para alternar</Text>
+
+      <View style={s.chipsRow}>
+        {DEMO_CHIPS.map(chip => {
+          const on = chip.k === state;
+          return (
+            <View
+              key={chip.k}
+              style={[
+                s.stateChip,
+                { borderColor: on ? chip.c : colors.line },
+                on && {
+                  shadowColor: chip.c,
+                  shadowRadius: 8,
+                  shadowOpacity: 0.4,
+                  shadowOffset: { width: 0, height: 0 },
+                  elevation: 4,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 13 }}>{chip.e}</Text>
+              <Text style={[s.chipLabel, { color: on ? chip.c : colors.txMut }]}>{chip.t}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      <Text style={s.cycleText}>Falta → Tenho → Repetida → Falta</Text>
+      <Text style={s.cycleSubtext}>O ciclo completo com um só toque.</Text>
     </View>
   );
 }
+
+// ── Slide 2 ────────────────────────────────────────────────
+const CARDS_2: [string, string, string][] = [
+  [
+    '☁️',
+    'Sincronize seu progresso',
+    'Seus dados ficam salvos na nuvem e sincronizados em todos os seus dispositivos.',
+  ],
+  [
+    '🔄',
+    'Nunca perca seus dados',
+    'Mesmo sem internet, suas alterações são salvas e sincronizadas automaticamente.',
+  ],
+  [
+    '📱',
+    'Múltiplos dispositivos',
+    'Use no celular e no tablet com o mesmo login — seu progresso sempre atualizado.',
+  ],
+];
 
 function Slide2() {
   return (
-    <View style={styles.slide}>
-      <Text style={styles.slideTitle}>Crie sua conta</Text>
-      <View style={styles.benefitsList}>
-        <View style={styles.benefitItem}>
-          <Text style={styles.benefitIcon}>☁️</Text>
-          <View style={styles.benefitText}>
-            <Text style={styles.benefitTitle}>Sincronize seu progresso</Text>
-            <Text style={styles.benefitDesc}>
-              Seus dados ficam salvos na nuvem e sincronizados em todos os seus dispositivos.
-            </Text>
-          </View>
-        </View>
-        <View style={styles.benefitItem}>
-          <Text style={styles.benefitIcon}>🔄</Text>
-          <View style={styles.benefitText}>
-            <Text style={styles.benefitTitle}>Nunca perca seus dados</Text>
-            <Text style={styles.benefitDesc}>
-              Mesmo sem internet, suas alterações são salvas e sincronizadas automaticamente.
-            </Text>
-          </View>
-        </View>
-        <View style={styles.benefitItem}>
-          <Text style={styles.benefitIcon}>📱</Text>
-          <View style={styles.benefitText}>
-            <Text style={styles.benefitTitle}>Múltiplos dispositivos</Text>
-            <Text style={styles.benefitDesc}>
-              Use no celular e no tablet com o mesmo login — seu progresso sempre atualizado.
-            </Text>
-          </View>
-        </View>
+    <View style={s.slide}>
+      <Text style={s.slideTitle}>Crie sua conta</Text>
+      <View style={{ gap: 13, width: '100%' }}>
+        {CARDS_2.map(([icon, title, desc], i) => (
+          <GlassCard key={i} style={s.benefitCard}>
+            <View style={s.benefitIcon}>
+              <Text style={{ fontSize: 20 }}>{icon}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.benefitTitle}>{title}</Text>
+              <Text style={s.benefitDesc}>{desc}</Text>
+            </View>
+          </GlassCard>
+        ))}
       </View>
-      <Text style={styles.slideDescription}>
+      <Text style={s.footNote}>
         Faça login com sua conta Google nas configurações do app para ativar a sincronia.
       </Text>
     </View>
   );
 }
 
+// ── Slide 3 ────────────────────────────────────────────────
+const TABS_3: [string, string, string][] = [
+  ['🏠', 'Home', 'Visão geral do seu progresso'],
+  ['📖', 'Álbum', 'Todas as seleções e figurinhas'],
+  ['🔍', 'Faltantes', 'Figurinhas que ainda precisa'],
+  ['🔄', 'Repetidas', 'Figurinhas para trocar'],
+  ['📊', 'Stats', 'Estatísticas detalhadas'],
+];
+
 function Slide3() {
   return (
-    <View style={styles.slide}>
-      <Text style={styles.slideTitle}>Conheça o App</Text>
-      <Text style={styles.slideDescription}>
-        Navegue pelas 5 abas na parte inferior da tela:
-      </Text>
-      <View style={styles.tabBarPreview}>
-        {tabBarItems.map(tab => (
-          <View key={tab.label} style={styles.tabItem} testID={`tab-item-${tab.label}`}>
-            <Text style={styles.tabIcon}>{tab.icon}</Text>
-            <Text style={styles.tabLabel}>{tab.label}</Text>
-            <Text style={styles.tabDesc}>{tab.description}</Text>
-          </View>
+    <View style={s.slide}>
+      <Text style={s.slideTitle}>Conheça o App</Text>
+      <Text style={s.slideDesc}>Navegue pelas 5 abas na parte inferior da tela.</Text>
+      <View style={{ gap: 10, width: '100%' }}>
+        {TABS_3.map(([icon, name, desc], i) => (
+          <GlassCard key={i} style={s.tabRow}>
+            <View style={s.tabIcon}>
+              <Text style={{ fontSize: 18 }}>{icon}</Text>
+            </View>
+            <Text style={s.tabName}>{name}</Text>
+            <Text style={s.tabDesc}>{desc}</Text>
+          </GlassCard>
         ))}
       </View>
     </View>
@@ -171,17 +164,14 @@ function Slide3() {
 }
 
 const slides = [Slide1, Slide2, Slide3];
-const slideLabels = ['Slide 1 de 3', 'Slide 2 de 3', 'Slide 3 de 3'];
 
+// ── Shell ──────────────────────────────────────────────────
 export function OnboardingModal({ visible, onComplete }: OnboardingModalProps) {
   const [currentSlide, setCurrentSlide] = useState<SlideIndex>(0);
-
   const prevVisibleRef = useRef(visible);
 
   useEffect(() => {
-    if (!prevVisibleRef.current && visible) {
-      setCurrentSlide(0);
-    }
+    if (!prevVisibleRef.current && visible) setCurrentSlide(0);
     prevVisibleRef.current = visible;
   }, [visible]);
 
@@ -193,243 +183,192 @@ export function OnboardingModal({ visible, onComplete }: OnboardingModalProps) {
       }
       return true;
     };
-    BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
   }, [visible, currentSlide]);
 
   const handleNext = useCallback(() => {
-    if (currentSlide < 2) {
-      setCurrentSlide(prev => (prev + 1) as SlideIndex);
-    }
+    if (currentSlide < 2) setCurrentSlide(prev => (prev + 1) as SlideIndex);
   }, [currentSlide]);
 
-  const handleComplete = useCallback(() => {
-    onComplete();
-  }, [onComplete]);
-
   const SlideComponent = slides[currentSlide];
+  const isLast = currentSlide === 2;
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleComplete} testID="skip-button">
-            <Text style={styles.skipText}>Pular</Text>
+      <LinearGradient
+        colors={gradients.appBg.colors}
+        start={gradients.appBg.start}
+        end={gradients.appBg.end}
+        style={s.root}
+      >
+        {/* Top bar */}
+        <View style={s.topBar}>
+          <TouchableOpacity onPress={onComplete} testID="skip-button">
+            <Text style={s.skipText}>Pular</Text>
           </TouchableOpacity>
-          <Text style={styles.progressText}>{slideLabels[currentSlide]}</Text>
-          <View style={styles.skipPlaceholder} />
+          <View style={s.stepPill}>
+            <Text style={s.stepText}>Passo {currentSlide + 1} de 3</Text>
+          </View>
+          <View style={{ width: 34 }} />
         </View>
 
-        <View style={styles.content}>
+        {/* Slide content */}
+        <View style={s.content}>
           <SlideComponent />
         </View>
 
-        <View style={styles.footer}>
-          <View style={styles.dots}>
-            {[0, 1, 2].map(i => (
-              <View
-                key={i}
-                style={[styles.dot, currentSlide === i && styles.dotActive]}
-              />
+        {/* Footer */}
+        <View style={s.footer}>
+          {/* Dots */}
+          <View style={s.dots}>
+            {[0, 1, 2].map(n => (
+              <View key={n} style={[s.dot, currentSlide === n && s.dotActive]} />
             ))}
           </View>
-
-          {currentSlide < 2 ? (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleNext}
-              testID="next-button"
-            >
-              <Text style={styles.primaryButtonText}>Próximo</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleComplete}
-              testID="complete-button"
-            >
-              <Text style={styles.primaryButtonText}>Concluir</Text>
-            </TouchableOpacity>
-          )}
+          <GoldButton
+            label={isLast ? 'Concluir' : 'Próximo'}
+            onPress={isLast ? onComplete : handleNext}
+            style={s.primaryBtn}
+          />
         </View>
-      </View>
+      </LinearGradient>
     </Modal>
   );
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SW } = Dimensions.get('window');
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: 60,
-  },
-  header: {
+const s = StyleSheet.create({
+  root: { flex: 1, paddingTop: 60 },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingHorizontal: 22,
+    paddingBottom: 0,
   },
-  skipText: {
-    ...typography.body,
-    color: colors.textMuted,
+  skipText: { fontSize: 13, fontWeight: '700', color: colors.txFaint },
+  stepPill: {
+    backgroundColor: colors.glass,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
-  skipPlaceholder: {
-    width: 50,
-  },
-  progressText: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
+  stepText: { fontSize: 12, color: colors.txMut, fontWeight: '600' },
   content: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 26,
     justifyContent: 'center',
   },
-  slide: {
-    alignItems: 'center',
-  },
+  slide: { alignItems: 'center' },
   slideTitle: {
-    ...typography.h1,
-    color: colors.textPrimary,
+    fontFamily: fonts.display,
+    fontSize: 25,
+    color: colors.tx,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
-  slideDescription: {
-    ...typography.body,
-    color: colors.textSecondary,
+  slideDesc: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.txMut,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.lg,
+    lineHeight: 21,
+    marginBottom: 30,
   },
-  demoCardContainer: {
+  tapHint: { fontFamily: fonts.body, fontSize: 12, color: colors.txFaint, marginBottom: 16 },
+  chipsRow: { flexDirection: 'row', gap: 9, justifyContent: 'center', marginBottom: 24 },
+  stateChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    backgroundColor: colors.glass,
   },
-  demoCard: {
-    width: 120,
-    height: 140,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  demoCardNumber: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  demoCardLabel: {
+  chipLabel: { fontFamily: fonts.bodyBold, fontSize: 12.5 },
+  cycleText: {
+    fontFamily: fonts.mono,
     fontSize: 12,
-    fontWeight: '500',
-    marginTop: 4,
-    textAlign: 'center',
+    color: colors.goldSoft,
+    letterSpacing: 0.3,
   },
-  demoHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
-  stateIndicator: {
+  cycleSubtext: { fontFamily: fonts.body, fontSize: 13, color: colors.txMut, marginTop: 6 },
+  benefitCard: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  stateDot: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-  },
-  stateDotText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  benefitsList: {
-    width: '100%',
-    marginBottom: spacing.lg,
-  },
-  benefitItem: {
-    flexDirection: 'row',
+    gap: 14,
+    padding: 15,
+    borderRadius: 16,
     alignItems: 'flex-start',
-    marginBottom: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
   },
   benefitIcon: {
-    fontSize: 28,
-    marginRight: spacing.md,
-    marginTop: 2,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(231,180,60,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(231,180,60,0.2)',
+    flexShrink: 0,
   },
-  benefitText: {
-    flex: 1,
+  benefitTitle: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.tx, marginBottom: 3 },
+  benefitDesc: { fontFamily: fonts.body, fontSize: 12.5, color: colors.txMut, lineHeight: 18 },
+  footNote: {
+    textAlign: 'center',
+    fontSize: 12.5,
+    color: colors.txFaint,
+    marginTop: 24,
+    lineHeight: 18,
+    paddingHorizontal: 10,
   },
-  benefitTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  benefitDesc: {
-    ...typography.body,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  tabBarPreview: {
-    width: '100%',
-    gap: spacing.sm,
-  },
-  tabItem: {
+  tabRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    gap: 13,
+    padding: 13,
+    borderRadius: 14,
   },
   tabIcon: {
-    fontSize: 20,
-    marginRight: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: colors.line,
+    flexShrink: 0,
   },
-  tabLabel: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    width: 80,
-  },
-  tabDesc: {
-    ...typography.body,
-    color: colors.textSecondary,
-    flex: 1,
-  },
+  tabName: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: colors.tx, width: 88 },
+  tabDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.txMut, flex: 1 },
   footer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 24,
     paddingBottom: 40,
     alignItems: 'center',
     gap: spacing.md,
   },
-  dots: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+  dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.border,
+    backgroundColor: colors.glass2,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   dotActive: {
-    backgroundColor: colors.primary,
-    width: 24,
+    width: 22,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    width: SCREEN_WIDTH - spacing.lg * 2,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    ...typography.h3,
-    color: colors.white,
-  },
+  primaryBtn: { width: SW - 48 },
 });

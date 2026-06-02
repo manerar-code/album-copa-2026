@@ -10,14 +10,14 @@ interface SearchInputProps {
 
 export function SearchInput({ value, onChangeText, placeholder = 'Buscar...' }: SearchInputProps) {
   return (
-    <View style={styles.container}>
-      <Text style={styles.icon}>🔍</Text>
+    <View style={s.container}>
+      <Text style={s.icon}>🔍</Text>
       <TextInput
-        style={styles.input}
+        style={s.input}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(255,255,255,0.5)"
+        placeholderTextColor={colors.txFaint}
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
@@ -26,21 +26,23 @@ export function SearchInput({ value, onChangeText, placeholder = 'Buscar...' }: 
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: radius.row,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     marginTop: spacing.md,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
-  icon: { fontSize: 16 },
+  icon: { fontSize: 15 },
   input: {
     flex: 1,
-    color: colors.white,
+    color: colors.tx,
     fontSize: 14,
   },
 });

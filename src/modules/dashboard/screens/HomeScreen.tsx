@@ -1,17 +1,26 @@
 import React, { useMemo, useState, useCallback, useContext } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useAuthStore } from '@modules/auth/store/authStore';
 import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { ProgressBar } from '@shared/components/ProgressBar';
-import { ScreenHeader } from '@shared/components/ScreenHeader';
+import { GlassCard } from '@shared/components/GlassCard';
 import { SkeletonBox } from '@shared/components/SkeletonBox';
 import { HelpModal } from '@shared/components/HelpModal';
-import { OnboardingContext } from '@core/providers/OnboardingContext';
-import { colors, spacing, radius, shadows, typography } from '@core/theme';
 import { FlagImage } from '@shared/components/FlagImage';
+import { OnboardingContext } from '@core/providers/OnboardingContext';
+import { colors, fonts, spacing, radius, gradients, shadows } from '@core/theme';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { BottomTabParamList } from '@core/navigation/types';
 
@@ -19,7 +28,8 @@ type HomeNavProp = BottomTabNavigationProp<BottomTabParamList, 'Home'>;
 
 export function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
-  const { selecoes, figurinhas, collection, applyCollection, userAlbums, activeUserAlbumId, isInitialized } = useStickerStore();
+  const { selecoes, figurinhas, collection, applyCollection, activeUserAlbumId, isInitialized } =
+    useStickerStore();
   const { user } = useAuthStore();
   const { trackedTypes } = useUserSettingsStore();
   const { restartTutorial } = useContext(OnboardingContext);
@@ -37,7 +47,6 @@ export function HomeScreen() {
     }
   }, [activeUserAlbumId, applyCollection]);
 
-  // Figurinhas filtradas pelos tipos selecionados
   const trackedFigurinhas = useMemo(() => {
     if (!trackedTypes) return figurinhas;
     return figurinhas.filter(f => trackedTypes.includes(f.type));
@@ -55,24 +64,8 @@ export function HomeScreen() {
     return { total, owned, duplicate, missing: total - owned - duplicate };
   }, [trackedFigurinhas, collection]);
 
-  const pct = stats.total > 0 ? stats.owned / stats.total : 0;
+  const pct = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
 
-  const typeStats = useMemo(() => {
-    const map = new Map<string, { total: number; owned: number }>();
-    for (const f of trackedFigurinhas) {
-      if (!f.type) continue;
-      const status = collection[f.id] ?? 'missing';
-      const entry = map.get(f.type) ?? { total: 0, owned: 0 };
-      entry.total++;
-      if (status !== 'missing') entry.owned++;
-      map.set(f.type, entry);
-    }
-    return Array.from(map.entries())
-      .map(([type, s]) => ({ type, ...s }))
-      .sort((a, b) => b.owned / (b.total || 1) - a.owned / (a.total || 1));
-  }, [trackedFigurinhas, collection]);
-
-  // Seleções com repetidas
   const teamsWithDuplicates = useMemo(() => {
     return selecoes
       .map(s => {
@@ -90,66 +83,50 @@ export function HomeScreen() {
   if (!isInitialized) return <HomeSkeleton />;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={s.safeArea}>
       <ScrollView
-        style={styles.container}
+        style={s.container}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.white} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
+        }
       >
         {/* Header */}
-        <ScreenHeader
-          title={`⚽ Olá, ${firstName}!`}
-          subtitle="Álbum Copa 2026"
+        <HomeHeader
+          firstName={firstName}
           onHelp={() => setHelpVisible(true)}
           onRefresh={onRefresh}
           refreshing={refreshing}
         />
 
-        {/* Card de progresso */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressCard}>
-            <View style={styles.progressHeader}>
+        <View style={s.body}>
+          {/* Progress card */}
+          <GlassCard gold style={s.progressCard}>
+            <View style={s.progressTop}>
               <View>
-                <Text style={styles.progressLabel}>PROGRESSO GERAL</Text>
-                <Text style={styles.progressCount}>
-                  {stats.owned} de {stats.total} figurinhas
+                <Text style={s.progressLabel}>PROGRESSO GERAL</Text>
+                <Text style={s.progressCount}>
+                  {stats.owned.toLocaleString('pt-BR')} de {stats.total.toLocaleString('pt-BR')}{' '}
+                  figurinhas
                 </Text>
               </View>
-              <Text style={styles.progressPct}>{Math.round(pct * 100)}%</Text>
+              <Text style={s.progressPct}>{pct}%</Text>
             </View>
-            <ProgressBar progress={pct} height={10} />
-          </View>
-        </View>
+            <ProgressBar progress={pct / 100} height={8} />
+          </GlassCard>
 
-        <View style={styles.content}>
-          {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            <StatCard label="Total" value={stats.total} color={colors.primary} icon="📦" />
-            <StatCard label="Tenho" value={stats.owned} color={colors.secondary} icon="✅" />
-            <StatCard label="Faltam" value={stats.missing} color={colors.red} icon="❌" />
-            <StatCard label="Repetidas" value={stats.duplicate} color={colors.accent} icon="🔄" />
+          {/* Stats grid */}
+          <View style={s.statsGrid}>
+            <StatTile emoji="📦" value={stats.total} label="Total" color={colors.goldSoft} />
+            <StatTile emoji="✅" value={stats.owned} label="Tenho" color={colors.green} />
+            <StatTile emoji="❌" value={stats.missing} label="Faltam" color={colors.red} />
+            <StatTile emoji="🔄" value={stats.duplicate} label="Repetidas" color={colors.gold} />
           </View>
 
-          {/* Por tipo */}
-          {typeStats.length > 0 && (
-            <>
-              <SectionTitle title="Por Tipo" />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.typeScroll}
-              >
-                {typeStats.map(({ type, total, owned }) => (
-                  <TypeCard key={type} label={type} owned={owned} total={total} />
-                ))}
-              </ScrollView>
-            </>
-          )}
-
-          {/* Repetidas por seleção */}
+          {/* Teams with duplicates */}
           {teamsWithDuplicates.length > 0 && (
             <>
-              <SectionTitle
+              <SectionLabel
                 title="Repetidas por Seleção"
                 action="Ver todas"
                 onAction={() => navigation.navigate('Duplicates')}
@@ -157,7 +134,7 @@ export function HomeScreen() {
               {teamsWithDuplicates.map(team => (
                 <TouchableOpacity
                   key={team.id}
-                  style={[styles.teamRow, shadows.card]}
+                  style={s.teamRow}
                   onPress={() => navigation.navigate('Album')}
                   activeOpacity={0.7}
                 >
@@ -166,9 +143,9 @@ export function HomeScreen() {
                     bandeiraUrl={team.bandeira_url}
                     size={26}
                   />
-                  <View style={styles.teamInfo}>
-                    <Text style={styles.teamName}>{team.nome}</Text>
-                    <Text style={styles.teamSub}>
+                  <View style={s.teamInfo}>
+                    <Text style={s.teamName}>{team.nome}</Text>
+                    <Text style={s.teamSub}>
                       {team.owned}/{team.total} · {team.codigo_fifa}
                     </Text>
                     <ProgressBar
@@ -176,10 +153,10 @@ export function HomeScreen() {
                       height={4}
                     />
                   </View>
-                  <View style={styles.dupBadge}>
-                    <Text style={styles.dupBadgeText}>{team.dup} rep</Text>
+                  <View style={s.dupBadge}>
+                    <Text style={s.dupBadgeText}>{team.dup} rep</Text>
                   </View>
-                  <Text style={styles.arrow}>›</Text>
+                  <Text style={s.arrow}>›</Text>
                 </TouchableOpacity>
               ))}
             </>
@@ -187,12 +164,95 @@ export function HomeScreen() {
         </View>
       </ScrollView>
 
-      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} onRestartTutorial={restartTutorial} />
+      <HelpModal
+        visible={helpVisible}
+        onClose={() => setHelpVisible(false)}
+        onRestartTutorial={restartTutorial}
+      />
     </SafeAreaView>
   );
 }
 
-function SectionTitle({
+// ── Sub-components ──────────────────────────────────────────
+
+interface HomeHeaderProps {
+  firstName: string;
+  onHelp: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
+}
+
+function HomeHeader({ firstName, onHelp, onRefresh, refreshing }: HomeHeaderProps) {
+  const { userAlbums, activeUserAlbumId } = useStickerStore();
+  const { setShowAlbumsModal } = useAuthStore();
+  const albumName = userAlbums.find(a => a.id === activeUserAlbumId)?.name ?? '';
+
+  return (
+    <LinearGradient
+      colors={gradients.header.colors}
+      start={gradients.header.start}
+      end={gradients.header.end}
+      style={s.header}
+    >
+      <View style={s.headerRow1}>
+        <View style={s.headerLeft}>
+          <View style={s.soccerChip}>
+            <Text style={{ fontSize: 19 }}>⚽</Text>
+          </View>
+          <View>
+            <Text style={s.headerGreet}>Olá, {firstName}!</Text>
+            <Text style={s.headerSub}>Álbum Copa 2026</Text>
+          </View>
+        </View>
+        <View style={s.headerRight}>
+          <View style={s.headerActions}>
+            <TouchableOpacity
+              style={[s.iconBtn, { borderColor: 'rgba(231,180,60,0.4)' }]}
+              onPress={onHelp}
+            >
+              <Text style={[s.iconTxt, { color: colors.gold, fontWeight: '800' }]}>?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.iconBtn} onPress={onRefresh} disabled={refreshing}>
+              <Text style={s.iconTxt}>{refreshing ? '⏳' : '🔄'}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.headerChipRow}>
+            {!!albumName && (
+              <TouchableOpacity style={s.albumChip} onPress={() => setShowAlbumsModal(true)}>
+                <Text style={s.albumChipText} numberOfLines={1}>
+                  {albumName} ▾
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+      <View style={s.headerBorder} />
+    </LinearGradient>
+  );
+}
+
+function StatTile({
+  emoji,
+  value,
+  label,
+  color,
+}: {
+  emoji: string;
+  value: number;
+  label: string;
+  color: string;
+}) {
+  return (
+    <GlassCard style={s.statTile}>
+      <Text style={s.statEmoji}>{emoji}</Text>
+      <Text style={[s.statValue, { color }]}>{value.toLocaleString('pt-BR')}</Text>
+      <Text style={s.statLabel}>{label.toUpperCase()}</Text>
+    </GlassCard>
+  );
+}
+
+function SectionLabel({
   title,
   action,
   onAction,
@@ -202,47 +262,13 @@ function SectionTitle({
   onAction?: () => void;
 }) {
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={s.sectionRow}>
+      <Text style={s.sectionTitle}>{title.toUpperCase()}</Text>
       {action && onAction && (
         <TouchableOpacity onPress={onAction}>
-          <Text style={styles.sectionAction}>{action}</Text>
+          <Text style={s.sectionAction}>{action}</Text>
         </TouchableOpacity>
       )}
-    </View>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  color,
-  icon,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  icon: string;
-}) {
-  return (
-    <View style={[styles.statCard, shadows.card]}>
-      <Text style={styles.statIcon}>{icon}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function TypeCard({ label, owned, total }: { label: string; owned: number; total: number }) {
-  const pct = total > 0 ? owned / total : 0;
-  return (
-    <View style={[styles.typeCard, shadows.card]}>
-      <Text style={styles.typeValue}>{owned}</Text>
-      <Text style={styles.typeLabel} numberOfLines={2}>
-        {label}
-      </Text>
-      <Text style={styles.typeTotal}>de {total}</Text>
-      <ProgressBar progress={pct} height={3} />
     </View>
   );
 }
@@ -252,118 +278,141 @@ function HomeSkeleton() {
     <SafeAreaView
       accessible
       accessibilityLabel="Carregando..."
-      style={{ flex: 1, backgroundColor: colors.primary }}
+      style={{ flex: 1, backgroundColor: colors.ink900 }}
     >
-      <View style={{ backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.xl }}>
+      <View
+        style={{ backgroundColor: colors.ink850, padding: spacing.md, paddingBottom: spacing.xl }}
+      >
         <SkeletonBox width="60%" height={24} style={{ marginBottom: spacing.sm }} />
         <SkeletonBox width="40%" height={14} style={{ marginBottom: spacing.md }} />
-        <SkeletonBox width="100%" height={88} borderRadius={radius.lg} />
+        <SkeletonBox width="100%" height={88} borderRadius={radius.glass} />
       </View>
       <View style={{ padding: spacing.md, gap: spacing.md }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
-          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
-          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
-          <SkeletonBox width="47%" height={90} borderRadius={radius.lg} />
+          {[0, 1, 2, 3].map(i => (
+            <SkeletonBox key={i} width="47%" height={90} borderRadius={radius.glass} />
+          ))}
         </View>
-        <SkeletonBox width="100%" height={64} borderRadius={radius.md} />
-        <SkeletonBox width="100%" height={64} borderRadius={radius.md} />
-        <SkeletonBox width="100%" height={64} borderRadius={radius.md} />
+        <SkeletonBox width="100%" height={64} borderRadius={radius.row} />
+        <SkeletonBox width="100%" height={64} borderRadius={radius.row} />
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.primary },
-  container: { flex: 1, backgroundColor: colors.background },
-  progressSection: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl,
+const s = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.ink900 },
+  container: { flex: 1, backgroundColor: colors.appBg },
+
+  // Header
+  header: { paddingHorizontal: 18, paddingTop: 22, paddingBottom: 18, position: 'relative' },
+  headerRow1: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
   },
-  progressCard: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: radius.lg,
-    padding: spacing.md,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  soccerChip: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(231,180,60,0.13)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(231,180,60,0.25)',
   },
-  progressHeader: {
+  headerGreet: { fontFamily: fonts.display, fontSize: 20, color: colors.tx, letterSpacing: -0.4 },
+  headerSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.txFaint, marginTop: 4 },
+  headerRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 9 },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconTxt: { fontSize: 14 },
+  headerChipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  albumChip: {
+    backgroundColor: 'rgba(231,180,60,0.12)',
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(231,180,60,0.3)',
+  },
+  albumChipText: { fontSize: 12, fontWeight: '700', color: colors.goldSoft },
+  headerBorder: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 1,
+    backgroundColor: colors.lineSoft,
+  },
+
+  // Body
+  body: { padding: spacing.md, gap: spacing.md },
+  progressCard: { padding: '4%' },
+  progressTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginBottom: spacing.sm,
+    marginBottom: 11,
   },
   progressLabel: {
+    fontFamily: fonts.bodyBold,
     fontSize: 10,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1,
-    marginBottom: 2,
+    color: colors.txFaint,
+    letterSpacing: 1.4,
   },
-  progressCount: { ...typography.body, color: colors.white, fontWeight: '600' },
-  progressPct: { fontSize: 32, fontWeight: '800', color: colors.accent },
-  content: { padding: spacing.md, gap: spacing.md },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  statCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    width: '47%',
-    alignItems: 'flex-start',
-    gap: 2,
-  },
-  statIcon: { fontSize: 20, marginBottom: 4 },
-  statValue: { fontSize: 28, fontWeight: '800' },
+  progressCount: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.tx, marginTop: 4 },
+  progressPct: { fontFamily: fonts.display, fontSize: 34, color: colors.gold, letterSpacing: -1 },
+
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  statTile: { padding: 15, borderRadius: radius.glass, width: '47%' },
+  statEmoji: { fontSize: 18, marginBottom: 10 },
+  statValue: { fontFamily: fonts.display, fontSize: 30, letterSpacing: -1 },
   statLabel: {
-    ...typography.label,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.txFaint,
+    letterSpacing: 1.4,
+    marginTop: 3,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.label,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  sectionAction: { fontSize: 13, fontWeight: '600', color: colors.primary },
-  typeScroll: { marginHorizontal: -spacing.md, paddingHorizontal: spacing.md },
-  typeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    width: 110,
-    marginRight: spacing.sm,
-    gap: 2,
-  },
-  typeValue: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  typeLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '500' },
-  typeTotal: { ...typography.caption, color: colors.textMuted, marginBottom: 4 },
+
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 10, fontWeight: '700', color: colors.txFaint, letterSpacing: 1.4 },
+  sectionAction: { fontSize: 13, fontWeight: '600', color: colors.gold },
+
   teamRow: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    backgroundColor: colors.glass,
+    borderRadius: radius.row,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadows.card,
   },
-  teamInfo: { flex: 1, gap: 3 },
-  teamName: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
-  teamSub: { ...typography.caption, color: colors.textMuted },
+  teamInfo: { flex: 1, gap: 4 },
+  teamName: { fontFamily: fonts.bodySemiBold, fontSize: 15, color: colors.tx },
+  teamSub: { fontFamily: fonts.mono, fontSize: 11, color: colors.txMut },
   dupBadge: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.full,
+    backgroundColor: 'rgba(231,180,60,0.15)',
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(231,180,60,0.35)',
   },
-  dupBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
-  arrow: { color: colors.border, fontSize: 22 },
+  dupBadgeText: { fontSize: 11, fontWeight: '700', color: colors.gold },
+  arrow: { color: colors.txFaint, fontSize: 22 },
 });

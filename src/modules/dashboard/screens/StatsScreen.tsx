@@ -1,18 +1,19 @@
 import React, { useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet, SafeAreaView } from 'react-native';
+
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useUserSettingsStore, displayType } from '@shared/store/userSettingsStore';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
+import { GlassCard } from '@shared/components/GlassCard';
 import { ProgressBar } from '@shared/components/ProgressBar';
 import { SkeletonBox } from '@shared/components/SkeletonBox';
 import { FlagImage } from '@shared/components/FlagImage';
-import { colors, spacing, radius, shadows, typography } from '@core/theme';
+import { colors, fonts, spacing, radius, shadows } from '@core/theme';
 
 export function StatsScreen() {
   const { figurinhas, selecoes, collection, isInitialized } = useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
 
-  // Estatísticas por tipo
   const typeStats = useMemo(() => {
     const map = new Map<string, { total: number; owned: number; duplicate: number }>();
     for (const f of figurinhas) {
@@ -34,7 +35,6 @@ export function StatsScreen() {
       .sort((a, b) => b.pct - a.pct);
   }, [figurinhas, collection, trackedTypes]);
 
-  // Estatísticas por seleção
   const teamStats = useMemo(() => {
     return selecoes
       .map(s => {
@@ -52,21 +52,24 @@ export function StatsScreen() {
   const totalOwned = teamStats.reduce((a, t) => a + t.owned, 0);
   const totalStickers = teamStats.reduce((a, t) => a + t.total, 0);
   const complete = teamStats.filter(t => t.pct === 1).length;
+  const overallPct = totalStickers > 0 ? Math.round((totalOwned / totalStickers) * 100) : 0;
 
   const sections = [
     {
       title: `Por Tipo (${typeStats.length})`,
       data: typeStats,
       renderItem: ({ item }: { item: (typeof typeStats)[0] }) => (
-        <View style={[styles.row, shadows.card]}>
-          <View style={styles.rowInfo}>
-            <Text style={styles.rowTitle}>{item.type}</Text>
-            <Text style={styles.rowSub}>
+        <View style={[s.row, shadows.card]}>
+          <View style={s.rowInfo}>
+            <Text style={s.rowTitle}>{item.type}</Text>
+            <Text style={s.rowSub}>
               {item.owned + item.duplicate} de {item.total} · {item.duplicate} rep
             </Text>
             <ProgressBar progress={item.pct} height={4} />
           </View>
-          <Text style={styles.rowPct}>{Math.round(item.pct * 100)}%</Text>
+          <Text style={[s.rowPct, { color: item.pct >= 1 ? colors.green : colors.gold }]}>
+            {Math.round(item.pct * 100)}%
+          </Text>
         </View>
       ),
     },
@@ -74,45 +77,49 @@ export function StatsScreen() {
       title: `Por Seleção (${selecoes.length})`,
       data: teamStats,
       renderItem: ({ item }: { item: (typeof teamStats)[0] }) => (
-        <View style={[styles.row, shadows.card]}>
-          <FlagImage codigoFifa={item.codigo_fifa} bandeiraUrl={item.bandeira_url} size={24} />
-          <View style={styles.rowInfo}>
-            <Text style={styles.rowTitle}>{item.nome}</Text>
-            <Text style={styles.rowSub}>
+        <View style={[s.row, shadows.card]}>
+          <FlagImage codigoFifa={item.codigo_fifa} bandeiraUrl={item.bandeira_url} size={34} />
+          <View style={s.rowInfo}>
+            <Text style={s.rowTitle}>{item.nome}</Text>
+            <Text style={s.rowSub}>
               {item.owned}/{item.total} · {item.dup} rep · {item.codigo_fifa}
             </Text>
             <ProgressBar progress={item.pct} height={4} />
           </View>
-          <Text style={styles.rowPct}>{Math.round(item.pct * 100)}%</Text>
+          <Text style={[s.rowPct, { color: item.pct >= 1 ? colors.green : colors.gold }]}>
+            {Math.round(item.pct * 100)}%
+          </Text>
         </View>
       ),
     },
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={s.safeArea}>
       <ScreenHeader title="📊 Estatísticas" />
       <SectionList
         sections={sections as never[]}
         keyExtractor={(item: unknown, i) => String(i)}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={s.list}
+        style={s.flatList}
         ListHeaderComponent={
-          <View style={styles.summarySection}>
-            <Text style={styles.sectionTitle}>Resumo</Text>
-            <View style={styles.summaryRow}>
-              <SummaryCard label="Figurinhas" value={`${totalOwned}/${totalStickers}`} />
+          <View style={s.summarySection}>
+            <Text style={s.sectionLabel}>Resumo</Text>
+            <View style={s.summaryRow}>
               <SummaryCard
-                label="Progresso"
-                value={`${Math.round((totalOwned / (totalStickers || 1)) * 100)}%`}
+                label="Figurinhas"
+                value={`${totalOwned}/${totalStickers}`}
+                color={colors.goldSoft}
               />
-              <SummaryCard label="100% completas" value={String(complete)} />
+              <SummaryCard label="Progresso" value={`${overallPct}%`} color={colors.gold} />
+              <SummaryCard label="Completas" value={String(complete)} color={colors.green} />
             </View>
           </View>
         }
-
-        renderSectionHeader={({ section: { title } }: { section: { title: string } }) => (
-          <Text style={styles.sectionTitle}>{title}</Text>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        renderSectionHeader={({ section }: any) => (
+          <Text style={s.sectionLabel}>{section.title}</Text>
         )}
         renderItem={({
           item,
@@ -126,28 +133,39 @@ export function StatsScreen() {
   );
 }
 
+function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <GlassCard style={s.summaryCard}>
+      <Text style={[s.summaryValue, { color }]}>{value}</Text>
+      <Text style={s.summaryLabel}>{label}</Text>
+    </GlassCard>
+  );
+}
+
 function StatsSkeleton() {
   return (
     <SafeAreaView
       accessible
       accessibilityLabel="Carregando..."
-      style={{ flex: 1, backgroundColor: colors.primary }}
+      style={{ flex: 1, backgroundColor: colors.ink900 }}
     >
-      <View style={{ backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg }}>
+      <View
+        style={{ backgroundColor: colors.ink850, padding: spacing.md, paddingBottom: spacing.lg }}
+      >
         <SkeletonBox width="50%" height={24} style={{ marginBottom: spacing.md }} />
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <SkeletonBox width="30%" height={64} borderRadius={radius.md} />
-          <SkeletonBox width="30%" height={64} borderRadius={radius.md} />
-          <SkeletonBox width="30%" height={64} borderRadius={radius.md} />
+          <SkeletonBox width="30%" height={64} borderRadius={radius.glass} />
+          <SkeletonBox width="30%" height={64} borderRadius={radius.glass} />
+          <SkeletonBox width="30%" height={64} borderRadius={radius.glass} />
         </View>
       </View>
-      <View style={{ backgroundColor: colors.background, flex: 1, paddingTop: spacing.sm }}>
+      <View style={{ backgroundColor: colors.appBg, flex: 1, paddingTop: spacing.sm }}>
         {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
           <SkeletonBox
             key={i}
             width="90%"
             height={64}
-            borderRadius={radius.md}
+            borderRadius={radius.row}
             style={{ alignSelf: 'center', marginBottom: spacing.sm }}
           />
         ))}
@@ -156,52 +174,67 @@ function StatsSkeleton() {
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.summaryCard}>
-      <Text style={styles.summaryValue}>{value}</Text>
-      <Text style={styles.summaryLabel}>{label}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.primary },
+const s = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.ink900 },
+  flatList: { backgroundColor: colors.appBg },
   list: { flexGrow: 1, paddingBottom: spacing.xl },
-  summarySection: { backgroundColor: colors.primary, padding: spacing.md, paddingBottom: spacing.lg },
-  summaryRow: { flexDirection: 'row', gap: spacing.sm },
+
+  summarySection: {
+    backgroundColor: colors.ink850,
+    padding: spacing.md,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft,
+  },
+  summaryRow: { flexDirection: 'row', gap: spacing.sm, marginTop: 10 },
   summaryCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: radius.md,
     padding: spacing.md,
+    borderRadius: radius.glass,
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
-  summaryValue: { fontSize: 18, fontWeight: '800', color: colors.white },
-  summaryLabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', textAlign: 'center' },
-  sectionTitle: {
-    ...typography.label,
-    color: colors.textMuted,
+  summaryValue: { fontFamily: fonts.display, fontSize: 18, letterSpacing: -0.5 },
+  summaryLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: colors.txFaint,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.txFaint,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
-    letterSpacing: 1,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
-    backgroundColor: colors.background,
+    backgroundColor: colors.appBg,
   },
+
   row: {
-    backgroundColor: colors.white,
-    borderRadius: radius.md,
+    backgroundColor: colors.glass,
+    borderRadius: radius.row,
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
-  rowInfo: { flex: 1, gap: 3 },
-  rowTitle: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
-  rowSub: { ...typography.caption, color: colors.textMuted },
-  rowPct: { fontSize: 14, fontWeight: '700', color: colors.primary, width: 38, textAlign: 'right' },
+  rowInfo: { flex: 1, gap: 4 },
+  rowTitle: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: colors.tx },
+  rowSub: { fontFamily: fonts.mono, fontSize: 11, color: colors.txMut },
+  rowPct: {
+    fontFamily: fonts.display,
+    fontSize: 15,
+    width: 40,
+    textAlign: 'right',
+    letterSpacing: -0.5,
+  },
 });

@@ -11,19 +11,19 @@ interface ProgressBarProps {
 
 export function ProgressBar({
   progress,
-  height = 10,
-  color = colors.secondary,
-  backgroundColor = '#F0F0F0',
+  height = 6,
+  color = colors.gold,
+  backgroundColor = 'rgba(255,255,255,0.08)',
 }: ProgressBarProps) {
   const clampedProgress = Math.min(1, Math.max(0, progress));
   return (
-    <View style={[styles.container, { height, backgroundColor, borderRadius: radius.full }]}>
+    <View style={[s.container, { height, backgroundColor, borderRadius: radius.full }]}>
       <View
         style={[
-          styles.fill,
+          s.fill,
           {
-            width: `${clampedProgress * 100}%`,
-            backgroundColor: color,
+            width: `${Math.max(2, clampedProgress * 100)}%`,
+            backgroundColor: clampedProgress >= 1 ? colors.green : color,
             borderRadius: radius.full,
           },
         ]}
@@ -32,7 +32,7 @@ export function ProgressBar({
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { overflow: 'hidden', width: '100%' },
   fill: { height: '100%' },
 });

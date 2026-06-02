@@ -13,8 +13,18 @@ import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
-import { colors, spacing, radius, typography } from '@core/theme';
+import { GlassCard } from '@shared/components/GlassCard';
+import { CromoCard } from '@shared/components/CromoCard';
 import { FlagImage } from '@shared/components/FlagImage';
+import {
+  colors,
+  fonts,
+  spacing,
+  radius,
+  teamColors,
+  defaultTeamColors,
+  teamFlagEmoji,
+} from '@core/theme';
 
 export function DuplicatesScreen() {
   const [query, setQuery] = useState('');
@@ -41,6 +51,8 @@ export function DuplicatesScreen() {
           title: selecao.nome,
           codigoFifa,
           bandeiraUrl: selecao.bandeira_url,
+          flag: teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴',
+          tc: teamColors[codigoFifa] ?? defaultTeamColors,
           count: duplicates.length,
           data: duplicates,
         };
@@ -65,19 +77,36 @@ export function DuplicatesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={s.safeArea}>
       <ScreenHeader
         title="🔄 Repetidas"
         subtitle={`${total} figurinhas · ${sections.length} seleções`}
       />
-      <View style={styles.searchBox}>
-        <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar..." />
+
+      <View style={s.searchBox}>
+        <SearchInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Buscar repetida para trocar…"
+        />
       </View>
+
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={s.list}
         showsVerticalScrollIndicator={false}
+        style={s.flatList}
+        ListHeaderComponent={
+          total > 0 ? (
+            <GlassCard gold style={s.tradeBanner}>
+              <Text style={{ fontSize: 16 }}>🤝</Text>
+              <Text style={s.tradeBannerText}>
+                Você tem {total} figurinhas para trocar com amigos.
+              </Text>
+            </GlassCard>
+          ) : null
+        }
         ListEmptyComponent={
           <EmptyState
             emoji="✅"
@@ -87,32 +116,40 @@ export function DuplicatesScreen() {
         }
         ListFooterComponent={
           sections.length > 0 ? (
-            <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-              <Text style={styles.shareBtnText}>📲 Compartilhar via WhatsApp</Text>
+            <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+              <Text style={s.shareBtnText}>📲 Compartilhar via WhatsApp</Text>
             </TouchableOpacity>
           ) : null
         }
         renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeader}>
+          <View style={s.sectionHeader}>
             <FlagImage
               codigoFifa={section.codigoFifa}
               bandeiraUrl={section.bandeiraUrl}
-              size={22}
+              size={20}
             />
-            <Text style={styles.sectionName}>{section.title}</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{section.count} repetidas</Text>
-            </View>
+            <Text style={s.sectionName}>{section.title}</Text>
+            <Text style={s.sectionCount}>
+              {section.count} repetidas · {section.codigoFifa}
+            </Text>
           </View>
         )}
         renderItem={({ index, section }) => {
           if (index !== 0) return null;
           return (
-            <View style={styles.chipsContainer}>
+            <View style={s.cromoGrid}>
               {section.data.map(f => (
-                <View key={f.id} style={styles.chip}>
-                  <Text style={styles.chipText}>{f.numero}</Text>
-                </View>
+                <CromoCard
+                  key={f.id}
+                  numero={f.numero}
+                  descricao={f.descricao}
+                  flag={section.flag}
+                  f1={section.tc.f1}
+                  f2={section.tc.f2}
+                  state="duplicate"
+                  dupCount={2}
+                  width={96}
+                />
               ))}
             </View>
           );
@@ -122,42 +159,56 @@ export function DuplicatesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.primary },
-  searchBox: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
+const s = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.ink900 },
+  searchBox: {
+    backgroundColor: colors.ink850,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft,
+  },
+  flatList: { backgroundColor: colors.appBg },
+  list: { padding: spacing.md, flexGrow: 1 },
+
+  tradeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: '3%',
+    marginBottom: 16,
+  },
+  tradeBannerText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12.5,
+    color: colors.goldSoft,
+    flex: 1,
+  },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.sm,
+    gap: 9,
+    paddingVertical: 10,
+    marginTop: 8,
   },
-  sectionFlag: { fontSize: 18 },
-  sectionName: { ...typography.body, fontWeight: '700', color: colors.primary },
-  countBadge: {
-    backgroundColor: '#FEF9E7',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+  sectionName: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.tx, flex: 1 },
+  sectionCount: { fontFamily: fonts.mono, fontSize: 10, color: colors.txFaint },
+
+  cromoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    marginBottom: spacing.md,
+    justifyContent: 'flex-start',
   },
-  countText: { fontSize: 11, color: colors.duplicate.text },
-  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.md },
-  chip: {
-    backgroundColor: colors.duplicate.background,
-    borderWidth: 1,
-    borderColor: colors.duplicate.border,
-    borderRadius: radius.sm,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.duplicate.text },
+
   shareBtn: {
     backgroundColor: '#25D366',
-    borderRadius: radius.lg,
+    borderRadius: radius.glass,
     padding: spacing.md,
     margin: spacing.md,
     alignItems: 'center',
   },
-  shareBtnText: { color: colors.white, fontSize: 15, fontWeight: '700' },
+  shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

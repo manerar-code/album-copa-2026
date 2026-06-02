@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Image,
-  ScrollView,
-  Dimensions,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '@modules/auth/services/authService';
-import { colors, spacing, radius, typography } from '@core/theme';
+import { BrandMedallion, Wordmark } from '@shared/components/BrandMedallion';
+import { GlassCard } from '@shared/components/GlassCard';
+import { GoldButton } from '@shared/components/GoldButton';
+import { colors, fonts, spacing, gradients } from '@core/theme';
 
-const { width } = Dimensions.get('window');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const FIFA_IMAGE = require('../../../../assets/fifa-wc-2026.png') as number;
+const FEATURES: [string, string][] = [
+  ['☁️', 'Coleção salva na nuvem'],
+  ['📱', 'Acesse em qualquer dispositivo'],
+  ['🔄', 'Sincronização automática'],
+  ['⚽', '1.195 figurinhas do álbum Panini'],
+];
+
+const CONFETTI: [string, number, number, number, boolean][] = [
+  ['#FF5D52', -14, 40, 0, false],
+  ['#2BD17E', 300, 30, 90, true],
+  ['#5B9BFF', 20, 250, 30, false],
+  ['#E7B43C', 285, 200, 60, true],
+];
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -30,163 +34,157 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       await authService.signInWithGoogle();
       onLoginSuccess();
     } catch {
-      Alert.alert('Erro', 'Não foi possível fazer login com o Google. Tente novamente.');
+      // silently fail — user stays on login screen
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.root}>
+    <LinearGradient
+      colors={gradients.appBg.colors}
+      start={gradients.appBg.start}
+      end={gradients.appBg.end}
+      style={s.root}
+    >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        {/* Hero com imagem FIFA */}
-        <View style={styles.hero}>
-          <Image source={FIFA_IMAGE} style={styles.fifaImage} resizeMode="contain" />
-          <Text style={styles.appName}>Álbum Copa 2026</Text>
-          <Text style={styles.tagline}>Controle sua coleção · Salve na nuvem</Text>
+        {/* Hero */}
+        <View style={s.hero}>
+          {CONFETTI.map(([color, left, top, rotate, circle], i) => (
+            <View
+              key={i}
+              style={[
+                s.confettiDot,
+                {
+                  backgroundColor: color,
+                  left,
+                  top,
+                  borderRadius: circle ? 4 : 2,
+                  transform: [{ rotate: `${rotate}deg` }],
+                },
+              ]}
+            />
+          ))}
+          <BrandMedallion size={128} />
+          <View style={{ marginTop: 22 }}>
+            <Wordmark />
+          </View>
+          <Text style={s.tagline}>Controle sua coleção · Salve na nuvem</Text>
         </View>
 
-        {/* Features */}
-        <View style={styles.features}>
-          <FeatureRow emoji="☁️" text="Coleção salva na nuvem" />
-          <FeatureRow emoji="📱" text="Acesse em qualquer dispositivo" />
-          <FeatureRow emoji="🔄" text="Sincronização automática" />
-          <FeatureRow emoji="⚽" text="1.195 figurinhas do álbum Panini" />
-        </View>
+        {/* Feature list */}
+        <GlassCard gold style={s.featuresCard}>
+          {FEATURES.map(([icon, text], i) => (
+            <FeatureRow key={i} icon={icon} text={text} last={i === FEATURES.length - 1} />
+          ))}
+        </GlassCard>
 
-        {/* Botão de login */}
-        <View style={styles.bottom}>
-          <TouchableOpacity
-            style={[styles.googleBtn, loading && styles.googleBtnDisabled]}
+        <View style={s.spacer} />
+
+        {/* Login button */}
+        <TouchableOpacity
+          style={s.googleBtnWrapper}
+          onPress={handleGoogleLogin}
+          activeOpacity={0.8}
+          disabled={loading}
+        >
+          <GoldButton
+            label="Entrar com Google"
             onPress={handleGoogleLogin}
-            activeOpacity={0.85}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <>
-                <View style={styles.gIcon}>
-                  <Text style={styles.gLetter}>G</Text>
-                </View>
-                <Text style={styles.googleBtnText}>Entrar com Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
+            loading={loading}
+            style={s.fullWidth}
+          />
+        </TouchableOpacity>
 
-          <Text style={styles.terms}>
-            Seus dados são privados e seguros.{'\n'}
-            Apenas você acessa sua coleção.
-          </Text>
-        </View>
+        <Text style={s.legal}>
+          🔒 Seus dados são privados e seguros.{'\n'}Apenas você acessa sua coleção.
+        </Text>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 }
 
-function FeatureRow({ emoji, text }: { emoji: string; text: string }) {
+function FeatureRow({ icon, text, last }: { icon: string; text: string; last: boolean }) {
   return (
-    <View style={styles.featureRow}>
-      <Text style={styles.featureEmoji}>{emoji}</Text>
-      <Text style={styles.featureText}>{text}</Text>
+    <View style={[s.featureRow, !last && s.featureRowBorder]}>
+      <View style={s.featureIcon}>
+        <Text style={{ fontSize: 16 }}>{icon}</Text>
+      </View>
+      <Text style={s.featureText}>{text}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.primary,
-  },
+const s = StyleSheet.create({
+  root: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 26,
     paddingBottom: 40,
   },
   hero: {
+    position: 'relative',
     alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: spacing.lg,
+    marginTop: 44,
+    marginBottom: 0,
   },
-  fifaImage: {
-    width: width * 0.65,
-    height: width * 0.65,
-    marginBottom: spacing.md,
-  },
-  appName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.white,
-    textAlign: 'center',
-    letterSpacing: -0.5,
+  confettiDot: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    opacity: 0.8,
   },
   tagline: {
-    ...typography.body,
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    marginTop: 4,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13.5,
+    color: colors.txMut,
+    marginTop: 12,
   },
-  features: {
-    gap: spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+  featuresCard: {
+    marginTop: 30,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
   },
-  featureEmoji: {
-    fontSize: 22,
-    width: 32,
-    textAlign: 'center',
+  featureRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft,
+  },
+  featureIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(231,180,60,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(231,180,60,0.22)',
   },
   featureText: {
-    ...typography.body,
-    color: colors.white,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.tx,
     flex: 1,
   },
-  bottom: {
-    gap: spacing.md,
-  },
-  googleBtn: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    minHeight: 56,
-  },
-  googleBtnDisabled: { opacity: 0.7 },
-  gIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#4285F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gLetter: { fontSize: 15, fontWeight: '800', color: colors.white },
-  googleBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  terms: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.4)',
+  spacer: { flex: 1, minHeight: 24 },
+  googleBtnWrapper: { marginBottom: 16 },
+  fullWidth: { width: '100%' },
+  legal: {
+    fontFamily: fonts.body,
     textAlign: 'center',
+    fontSize: 11.5,
+    color: colors.txFaint,
     lineHeight: 18,
+    paddingBottom: spacing.md,
   },
 });

@@ -6,8 +6,9 @@ import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
-import { colors, spacing, radius, typography } from '@core/theme';
+import { CromoCard } from '@shared/components/CromoCard';
 import { FlagImage } from '@shared/components/FlagImage';
+import { colors, fonts, spacing, teamColors, defaultTeamColors, teamFlagEmoji } from '@core/theme';
 import { formatMissingList } from '../utils/formatMissingList';
 import { logger } from '@shared/utils/logger';
 
@@ -37,6 +38,8 @@ export function MissingScreen() {
           title: selecao.nome,
           codigoFifa,
           bandeiraUrl: selecao.bandeira_url,
+          flag: teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴',
+          teamColors: teamColors[codigoFifa] ?? defaultTeamColors,
           count: missing.length,
           data: missing,
         };
@@ -61,7 +64,7 @@ export function MissingScreen() {
     try {
       await Clipboard.setStringAsync(formattedText);
       showFeedback('success');
-      logger.log('export:clipboard', { missingCount: total, filteredBySelecao: false });
+      logger.log('export:clipboard', { missingCount: total });
     } catch {
       showFeedback('error');
       logger.error('export:clipboard:error');
@@ -69,7 +72,7 @@ export function MissingScreen() {
   }, [collection, selecoes, figurinhas, album, total, showFeedback]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={s.safeArea}>
       <ScreenHeader
         title="❌ Faltantes"
         subtitle={`${total} figurinhas · ${sections.length} seleções`}
@@ -77,55 +80,68 @@ export function MissingScreen() {
           <TouchableOpacity
             onPress={handleExport}
             disabled={total === 0}
-            style={styles.exportBtn}
+            style={s.exportBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityLabel="Exportar lista de faltantes"
           >
-            <Text style={[styles.exportBtnText, total === 0 && styles.exportBtnDisabled]}>
-              📋
-            </Text>
+            <Text style={[s.exportBtnText, total === 0 && { opacity: 0.3 }]}>📋</Text>
           </TouchableOpacity>
         }
       />
+
       {feedback && (
-        <View style={[styles.feedbackBar, feedback === 'error' && styles.feedbackBarError]}>
-          <Text style={styles.feedbackText}>
+        <View style={[s.feedbackBar, feedback === 'error' && s.feedbackBarError]}>
+          <Text style={s.feedbackText}>
             {feedback === 'success' ? '✅ Lista copiada!' : '❌ Erro ao copiar'}
           </Text>
         </View>
       )}
-      <View style={styles.searchBox}>
-        <SearchInput value={query} onChangeText={setQuery} placeholder="Buscar..." />
+
+      <View style={s.searchBox}>
+        <SearchInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Buscar figurinha que falta…"
+        />
       </View>
+
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={s.list}
         showsVerticalScrollIndicator={false}
+        style={s.flatList}
         ListEmptyComponent={
           <EmptyState emoji="🎉" title="Nenhuma faltante!" subtitle="Você completou o álbum!" />
         }
         renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeader}>
+          <View style={s.sectionHeader}>
             <FlagImage
               codigoFifa={section.codigoFifa}
               bandeiraUrl={section.bandeiraUrl}
-              size={22}
+              size={20}
             />
-            <Text style={styles.sectionName}>{section.title}</Text>
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{section.count} faltantes</Text>
-            </View>
+            <Text style={s.sectionName}>{section.title}</Text>
+            <Text style={s.sectionCount}>
+              {section.count} faltando · {section.codigoFifa}
+            </Text>
           </View>
         )}
         renderItem={({ index, section }) => {
           if (index !== 0) return null;
           return (
-            <View style={styles.chipsContainer}>
+            <View style={s.cromoGrid}>
               {section.data.map(f => (
-                <View key={f.id} style={styles.chip}>
-                  <Text style={styles.chipText}>{f.numero}</Text>
-                </View>
+                <CromoCard
+                  key={f.id}
+                  numero={f.numero}
+                  descricao={f.descricao}
+                  flag={section.flag}
+                  f1={section.teamColors.f1}
+                  f2={section.teamColors.f2}
+                  state="missing"
+                  width={72}
+                />
               ))}
             </View>
           );
@@ -135,51 +151,39 @@ export function MissingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.primary },
-  searchBox: { backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  list: { padding: spacing.md, backgroundColor: colors.background, flexGrow: 1 },
+const s = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.ink900 },
+  searchBox: {
+    backgroundColor: colors.ink850,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft,
+  },
+  flatList: { backgroundColor: colors.appBg },
+  list: { padding: spacing.md, flexGrow: 1 },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.sm,
+    gap: 9,
+    paddingVertical: 10,
+    marginTop: 8,
   },
-  sectionFlag: { fontSize: 18 },
-  sectionName: { ...typography.body, fontWeight: '700', color: colors.primary },
-  countBadge: {
-    backgroundColor: '#E8E8E8',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+  sectionName: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.tx, flex: 1 },
+  sectionCount: { fontFamily: fonts.mono, fontSize: 10, color: colors.txFaint },
+
+  cromoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 11,
+    marginBottom: spacing.md,
   },
-  countText: { fontSize: 11, color: colors.textSecondary },
-  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.md },
-  chip: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: radius.sm,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.textPrimary },
+
   exportBtn: { padding: 4 },
   exportBtnText: { fontSize: 18 },
-  exportBtnDisabled: { opacity: 0.3 },
-  feedbackBar: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-  },
-  feedbackBarError: {
-    backgroundColor: '#F44336',
-  },
-  feedbackText: {
-    color: colors.white,
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+
+  feedbackBar: { backgroundColor: colors.green, paddingVertical: 6, paddingHorizontal: spacing.md },
+  feedbackBarError: { backgroundColor: colors.red },
+  feedbackText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });
