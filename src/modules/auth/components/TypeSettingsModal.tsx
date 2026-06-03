@@ -25,9 +25,7 @@ export function TypeSettingsModal({ visible, onClose }: Props) {
   const toggle = async (type: string) => {
     const allTypes = [...configurableTypes, ...FIXED_TYPES];
     const current = trackedTypes ?? allTypes;
-    const next = current.includes(type)
-      ? current.filter(t => t !== type)
-      : [...current, type];
+    const next = current.includes(type) ? current.filter(t => t !== type) : [...current, type];
     await setTrackedTypes(next);
   };
 
@@ -41,11 +39,27 @@ export function TypeSettingsModal({ visible, onClose }: Props) {
           </Text>
 
           <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Locked mandatory types */}
+            {FIXED_TYPES.map(type => (
+              <View key={type} style={styles.row} testID={`locked-${type}`}>
+                <View style={[styles.check, styles.checkOn, styles.checkboxLocked]}>
+                  <Text style={styles.checkIcon}>✓</Text>
+                </View>
+                <Text style={styles.typeLabel}>{displayType(type)}</Text>
+                <Text style={styles.lockIcon}>🔒</Text>
+              </View>
+            ))}
+
+            <View style={styles.divider} />
+
             {configurableTypes.map(type => {
               const on = isTracked(type);
               return (
                 <TouchableOpacity key={type} style={styles.row} onPress={() => toggle(type)}>
-                  <View style={[styles.check, on ? styles.checkOn : styles.checkOff]}>
+                  <View
+                    style={[styles.check, on ? styles.checkOn : styles.checkOff]}
+                    testID={`checkbox-${type}`}
+                  >
                     {on && <Text style={styles.checkIcon}>✓</Text>}
                   </View>
                   <Text style={[styles.typeLabel, !on && styles.typeLabelOff]}>
@@ -93,7 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkOn: { backgroundColor: colors.secondary, borderColor: colors.secondary },
-  checkOff: { borderColor: colors.border },
+  checkOff: { borderWidth: 1.5, borderColor: colors.border },
   checkIcon: { color: colors.white, fontSize: 14, fontWeight: '800' },
   typeLabel: { flex: 1, fontSize: 15, color: colors.textPrimary, fontWeight: '500' },
   typeLabelOff: { color: colors.textMuted },
@@ -105,4 +119,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   closeBtnText: { color: colors.white, fontWeight: '700', fontSize: 16 },
+  checkboxLocked: { opacity: 0.6 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  lockIcon: { fontSize: 16, marginLeft: 4 },
 });

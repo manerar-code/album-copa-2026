@@ -4,7 +4,14 @@ import { cloudCollectionService } from '@shared/services/cloudCollectionService'
 import { offlineQueueService } from '@shared/services/offlineQueueService';
 import { useSyncStore } from '@shared/store/syncStore';
 import { logger } from '@shared/utils/logger';
-import type { StickerStatus, UserCollection, Selecao, Figurinha, Album, UserAlbum } from '@shared/types';
+import type {
+  StickerStatus,
+  UserCollection,
+  Selecao,
+  Figurinha,
+  Album,
+  UserAlbum,
+} from '@shared/types';
 
 const STATUS_CYCLE: Record<StickerStatus, StickerStatus> = {
   missing: 'owned',
@@ -39,7 +46,7 @@ interface CatalogState {
   loadCloudCollection: (userAlbumId: string) => Promise<UserCollection>;
   applyCollection: (collection: UserCollection) => Promise<void>;
   toggleSticker: (figurinhaId: string) => Promise<void>;
-  setStatus: (figurinhaId: string, status: StickerStatus) => Promise<void>;
+  setStatus: (figurinhaId: string, status: StickerStatus, targetAlbumId?: string) => Promise<void>;
   resetCollection: () => Promise<void>;
 
   // Computed helpers
@@ -48,6 +55,8 @@ interface CatalogState {
   // Retorna o userAlbumId de outra coleção que tem esta figurinha como 'duplicate'
   // enquanto na coleção ativa ela está 'missing'
   getTradeSource: (figurinhaId: string) => string | null;
+  // Retorna os IDs dos álbuns (excluindo o ativo) onde a figurinha está como 'duplicate'
+  getCrossAlbumDuplicateSources: (figurinhaId: string) => string[];
 }
 
 export const useStickerStore = create<CatalogState>((set, get) => ({
@@ -130,23 +139,46 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     }
   },
 
-  setStatus: async (figurinhaId: string, status: StickerStatus) => {
+  setStatus: async (figurinhaId: string, status: StickerStatus, targetAlbumId?: string) => {
     const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
-    const updated = { ...collection, [figurinhaId]: status };
-    set({
-      collection: updated,
-      allCollections: activeUserAlbumId
-        ? { ...allCollections, [activeUserAlbumId]: updated }
-        : allCollections,
-    });
-    try {
-      await collectionService.save(updated);
-      if (activeUserAlbumId && syncUserId) {
-        await cloudCollectionService.upsertOne(activeUserAlbumId, figurinhaId, status, syncUserId);
+
+    if (targetAlbumId !== undefined && targetAlbumId !== activeUserAlbumId) {
+      const prevCollections = allCollections;
+      const targetCollection = allCollections[targetAlbumId] ?? {};
+      const updatedTarget = { ...targetCollection, [figurinhaId]: status };
+      set({
+        allCollections: { ...allCollections, [targetAlbumId]: updatedTarget },
+      });
+      try {
+        if (syncUserId) {
+          await cloudCollectionService.upsertOne(targetAlbumId, figurinhaId, status, syncUserId);
+        }
+      } catch (error) {
+        logger.error('Failed to persist target album:', error);
+        set({ allCollections: prevCollections });
       }
-    } catch (error) {
-      logger.error('Failed to persist collection:', error);
-      set({ collection });
+    } else {
+      const updated = { ...collection, [figurinhaId]: status };
+      set({
+        collection: updated,
+        allCollections: activeUserAlbumId
+          ? { ...allCollections, [activeUserAlbumId]: updated }
+          : allCollections,
+      });
+      try {
+        await collectionService.save(updated);
+        if (activeUserAlbumId && syncUserId) {
+          await cloudCollectionService.upsertOne(
+            activeUserAlbumId,
+            figurinhaId,
+            status,
+            syncUserId,
+          );
+        }
+      } catch (error) {
+        logger.error('Failed to persist collection:', error);
+        set({ collection });
+      }
     }
   },
 
@@ -188,5 +220,12 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
       }
     }
     return null;
+  },
+
+  getCrossAlbumDuplicateSources: (figurinhaId: string): string[] => {
+    const { allCollections, activeUserAlbumId } = get();
+    return Object.entries(allCollections)
+      .filter(([albumId, col]) => albumId !== activeUserAlbumId && col[figurinhaId] === 'duplicate')
+      .map(([albumId]) => albumId);
   },
 }));

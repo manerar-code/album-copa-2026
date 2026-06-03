@@ -38,6 +38,119 @@ beforeEach(() => {
 });
 
 describe('stickerStore', () => {
+  describe('getCrossAlbumDuplicateSources', () => {
+    beforeEach(() => {
+      useStickerStore.setState({
+        allCollections: {
+          'album-active': { 'fig-001': 'missing', 'fig-002': 'owned', 'fig-004': 'duplicate' },
+          'album-b': { 'fig-001': 'duplicate', 'fig-003': 'missing' },
+          'album-c': { 'fig-001': 'duplicate', 'fig-002': 'owned' },
+        },
+        activeUserAlbumId: 'album-active',
+      });
+    });
+
+    it('returns album IDs where sticker is duplicate in other albums', () => {
+      const { result } = renderHook(() => useStickerStore());
+      expect(result.current.getCrossAlbumDuplicateSources('fig-001')).toEqual([
+        'album-b',
+        'album-c',
+      ]);
+    });
+
+    it('excludes the active album from results', () => {
+      const { result } = renderHook(() => useStickerStore());
+      const sources = result.current.getCrossAlbumDuplicateSources('fig-004');
+      expect(sources).toEqual([]);
+    });
+
+    it('returns empty array when sticker is not duplicate in any other album', () => {
+      const { result } = renderHook(() => useStickerStore());
+      expect(result.current.getCrossAlbumDuplicateSources('fig-003')).toEqual([]);
+    });
+
+    it('returns empty array when sticker is owned (not duplicate) in other albums', () => {
+      const { result } = renderHook(() => useStickerStore());
+      expect(result.current.getCrossAlbumDuplicateSources('fig-002')).toEqual([]);
+    });
+
+    it('returns empty array when no other albums exist', () => {
+      useStickerStore.setState({ allCollections: {}, activeUserAlbumId: 'album-active' });
+      const { result } = renderHook(() => useStickerStore());
+      expect(result.current.getCrossAlbumDuplicateSources('fig-001')).toEqual([]);
+    });
+  });
+
+  describe('setStatus with targetAlbumId', () => {
+    const mockUpsertOne = cloudCollectionService.upsertOne as jest.Mock;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockUpsertOne.mockResolvedValue(undefined);
+      useStickerStore.setState({
+        collection: { 'fig-001': 'missing' },
+        allCollections: {
+          'album-active': { 'fig-001': 'missing' },
+          'album-b': { 'fig-001': 'duplicate' },
+        },
+        activeUserAlbumId: 'album-active',
+        syncUserId: 'user-1',
+      });
+    });
+
+    it('updates the target album collection in allCollections', async () => {
+      const { result } = renderHook(() => useStickerStore());
+      await act(async () => {
+        await result.current.setStatus('fig-001', 'owned', 'album-b');
+      });
+      expect(result.current.allCollections['album-b']['fig-001']).toBe('owned');
+    });
+
+    it('does NOT modify the active album collection', async () => {
+      const { result } = renderHook(() => useStickerStore());
+      await act(async () => {
+        await result.current.setStatus('fig-001', 'owned', 'album-b');
+      });
+      expect(result.current.collection['fig-001']).toBe('missing');
+    });
+
+    it('calls cloudCollectionService.upsertOne with target album ID', async () => {
+      const { result } = renderHook(() => useStickerStore());
+      await act(async () => {
+        await result.current.setStatus('fig-001', 'owned', 'album-b');
+      });
+      expect(mockUpsertOne).toHaveBeenCalledWith('album-b', 'fig-001', 'owned', 'user-1');
+    });
+
+    it('does NOT save to local collectionService when targeting other album', async () => {
+      const { result } = renderHook(() => useStickerStore());
+      await act(async () => {
+        await result.current.setStatus('fig-001', 'owned', 'album-b');
+      });
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('updates active album when targetAlbumId is the active album', async () => {
+      const { result } = renderHook(() => useStickerStore());
+      await act(async () => {
+        await result.current.setStatus('fig-001', 'owned', 'album-active');
+      });
+      expect(result.current.collection['fig-001']).toBe('owned');
+      expect(mockSave).toHaveBeenCalled();
+    });
+
+    it('updates active album when targetAlbumId is undefined (default behavior)', async () => {
+      const { result } = renderHook(() => useStickerStore());
+      await act(async () => {
+        await result.current.setStatus('fig-001', 'owned');
+      });
+      expect(result.current.collection['fig-001']).toBe('owned');
+      expect(mockSave).toHaveBeenCalled();
+    });
+  });
+
+  // Original tests follow
+
   it('initial status of any sticker is missing', () => {
     const { result } = renderHook(() => useStickerStore());
     expect(result.current.getStatus('any-id')).toBe('missing');
@@ -47,19 +160,27 @@ describe('stickerStore', () => {
     const { result } = renderHook(() => useStickerStore());
     const id = 'sticker-001';
 
-    await act(async () => { await result.current.toggleSticker(id); });
+    await act(async () => {
+      await result.current.toggleSticker(id);
+    });
     expect(result.current.getStatus(id)).toBe('owned');
 
-    await act(async () => { await result.current.toggleSticker(id); });
+    await act(async () => {
+      await result.current.toggleSticker(id);
+    });
     expect(result.current.getStatus(id)).toBe('duplicate');
 
-    await act(async () => { await result.current.toggleSticker(id); });
+    await act(async () => {
+      await result.current.toggleSticker(id);
+    });
     expect(result.current.getStatus(id)).toBe('missing');
   });
 
   it('persists to storage on every toggle', async () => {
     const { result } = renderHook(() => useStickerStore());
-    await act(async () => { await result.current.toggleSticker('001'); });
+    await act(async () => {
+      await result.current.toggleSticker('001');
+    });
     expect(mockSave).toHaveBeenCalledTimes(1);
     expect(mockSave).toHaveBeenCalledWith({ '001': 'owned' });
   });
@@ -67,7 +188,9 @@ describe('stickerStore', () => {
   it('loadCollection reads from storage', async () => {
     mockLoad.mockResolvedValue({ '002': 'owned', '003': 'duplicate' });
     const { result } = renderHook(() => useStickerStore());
-    await act(async () => { await result.current.loadCollection(); });
+    await act(async () => {
+      await result.current.loadCollection();
+    });
     expect(result.current.getStatus('002')).toBe('owned');
     expect(result.current.getStatus('003')).toBe('duplicate');
   });
@@ -92,7 +215,9 @@ describe('stickerStore', () => {
   it('resetCollection clears collection and storage', async () => {
     useStickerStore.setState({ collection: { '1': 'owned' } });
     const { result } = renderHook(() => useStickerStore());
-    await act(async () => { await result.current.resetCollection(); });
+    await act(async () => {
+      await result.current.resetCollection();
+    });
     expect(result.current.collection).toEqual({});
     expect(mockReset).toHaveBeenCalledTimes(1);
   });
@@ -110,7 +235,9 @@ describe('stickerStore', () => {
       useSyncStore.setState({ status: 'synced' });
       const { result } = renderHook(() => useStickerStore());
 
-      await act(async () => { await result.current.toggleSticker('fig-001'); });
+      await act(async () => {
+        await result.current.toggleSticker('fig-001');
+      });
 
       expect(result.current.getStatus('fig-001')).toBe('owned');
       expect(mockUpsertOne).toHaveBeenCalledWith('album-1', 'fig-001', 'owned', 'user-1');
@@ -121,7 +248,9 @@ describe('stickerStore', () => {
       useSyncStore.setState({ status: 'pending' });
       const { result } = renderHook(() => useStickerStore());
 
-      await act(async () => { await result.current.toggleSticker('fig-001'); });
+      await act(async () => {
+        await result.current.toggleSticker('fig-001');
+      });
 
       expect(mockUpsertOne).toHaveBeenCalledWith('album-1', 'fig-001', 'owned', 'user-1');
       expect(mockEnqueue).not.toHaveBeenCalled();
@@ -131,7 +260,9 @@ describe('stickerStore', () => {
       useSyncStore.setState({ status: 'offline' });
       const { result } = renderHook(() => useStickerStore());
 
-      await act(async () => { await result.current.toggleSticker('fig-001'); });
+      await act(async () => {
+        await result.current.toggleSticker('fig-001');
+      });
 
       expect(result.current.getStatus('fig-001')).toBe('owned');
       expect(mockEnqueue).toHaveBeenCalledWith({
@@ -151,7 +282,9 @@ describe('stickerStore', () => {
 
       expect(result.current.getStatus('fig-001')).toBe('owned');
 
-      await act(async () => { await togglePromise; });
+      await act(async () => {
+        await togglePromise;
+      });
     });
 
     it('when offline and status becomes missing, does NOT enqueue', async () => {
@@ -159,7 +292,9 @@ describe('stickerStore', () => {
       useStickerStore.setState({ collection: { 'fig-001': 'duplicate' } });
       const { result } = renderHook(() => useStickerStore());
 
-      await act(async () => { await result.current.toggleSticker('fig-001'); });
+      await act(async () => {
+        await result.current.toggleSticker('fig-001');
+      });
 
       expect(result.current.getStatus('fig-001')).toBe('missing');
       expect(mockEnqueue).not.toHaveBeenCalled();

@@ -28,7 +28,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-16.4",
+        "image": "macos-sequoia-15.6-xcode-26.1",
         "resourceClass": "m-medium"
       }
     }
@@ -39,9 +39,9 @@
         "serviceAccountKeyPath": "./secrets/service-account-key.json"
       },
       "ios": {
-        "appleId": "manerardg@gmail.com",
-        "ascAppId": "ecdbede0-f0ce-4a45-b1ba-b9f54558130a",
-        "appleTeamId": "19392656646"
+        "appleId": "attriadigital@gmail.com",
+        "ascAppId": "6775635588",
+        "appleTeamId": "L6S357D7QC"
       }
     }
   }

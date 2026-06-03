@@ -4,7 +4,7 @@
     "slug": "album-copa-2026",
     "version": "1.0.0",
     "scheme": "album-copa-2026",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "experiments": {
       "typedRoutes": false
     },
@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.manera.albumcopa2026",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -39,10 +39,10 @@
     "privacyPolicyUrl": "https://album-copa-2026-sable.vercel.app/privacy-policy",
     "extra": {
       "eas": {
-        "projectId": "758486d3-d924-4d75-b91a-a32c41f7ae0b"
+        "projectId": "7de40b54-8884-43e8-a467-3fbdccf74dd7"
       }
     },
-    "owner": "manerar",
+    "owner": "attriadigital",
     "plugins": [
       "expo-web-browser",
       "expo-sqlite",

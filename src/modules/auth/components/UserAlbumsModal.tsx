@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  Platform,
 } from 'react-native';
 import { colors, spacing, radius, typography } from '@core/theme';
 import { userAlbumService } from '@shared/services/userAlbumService';
@@ -23,27 +22,25 @@ interface Props {
 }
 
 export function UserAlbumsModal({ visible, onClose, userId }: Props) {
-  const { userAlbums, setUserAlbums, activeUserAlbumId, setActiveUserAlbum, applyCollection, allCollections, setAllCollections } =
-    useStickerStore();
+  const {
+    userAlbums,
+    setUserAlbums,
+    activeUserAlbumId,
+    setActiveUserAlbum,
+    applyCollection,
+    allCollections,
+    setAllCollections,
+  } = useStickerStore();
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const confirm = (msg: string, onOk: () => void) => {
-    if (Platform.OS === 'web') {
-      // eslint-disable-next-line no-undef
-      if (window.confirm(msg)) onOk();
-    } else {
-      Alert.alert('Confirmar', msg, [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Confirmar', style: 'destructive', onPress: onOk },
-      ]);
-    }
-  };
-
   const handleSelect = async (album: UserAlbum) => {
-    if (album.id === activeUserAlbumId) { onClose(); return; }
+    if (album.id === activeUserAlbumId) {
+      onClose();
+      return;
+    }
     setLoading(true);
     try {
       let col = allCollections[album.id];
@@ -79,6 +76,7 @@ export function UserAlbumsModal({ visible, onClose, userId }: Props) {
     try {
       await userAlbumService.rename(id, name);
       setUserAlbums(userAlbums.map(a => (a.id === id ? { ...a, name } : a)));
+      setEditingName('');
       setEditingId(null);
     } finally {
       setLoading(false);
@@ -90,33 +88,45 @@ export function UserAlbumsModal({ visible, onClose, userId }: Props) {
       Alert.alert('Atenção', 'Você precisa ter pelo menos uma coleção.');
       return;
     }
-    confirm(
-      `Excluir "${album.name}"? Todos os dados desta coleção serão perdidos.`,
-      async () => {
-        setLoading(true);
-        try {
-          await userAlbumService.remove(album.id);
-          const remaining = userAlbums.filter(a => a.id !== album.id);
-          setUserAlbums(remaining);
-          const newAll = { ...allCollections };
-          delete newAll[album.id];
-          setAllCollections(newAll);
-          if (activeUserAlbumId === album.id) {
-            const next = remaining[0];
-            const col = await cloudCollectionService.load(next.id);
-            setActiveUserAlbum(next.id);
-            await applyCollection(col);
+    Alert.alert('Excluir coleção', `Excluir "${album.name}"? Todos os dados serão perdidos.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          setLoading(true);
+          try {
+            await userAlbumService.remove(album.id);
+            const remaining = userAlbums.filter(a => a.id !== album.id);
+            setUserAlbums(remaining);
+            const newAll = { ...allCollections };
+            delete newAll[album.id];
+            setAllCollections(newAll);
+            if (activeUserAlbumId === album.id) {
+              const next = remaining[0];
+              const col = await cloudCollectionService.load(next.id);
+              setActiveUserAlbum(next.id);
+              await applyCollection(col);
+            }
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Não foi possível excluir a coleção.';
+            Alert.alert('Erro', message);
+          } finally {
+            setLoading(false);
           }
-        } finally {
-          setLoading(false);
-        }
+        },
       },
-    );
+    ]);
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
+        onPress={onClose}
+        testID="albums-overlay"
+      >
         <TouchableOpacity activeOpacity={1} style={styles.sheet}>
           <Text style={styles.title}>Minhas Coleções</Text>
 
@@ -127,9 +137,12 @@ export function UserAlbumsModal({ visible, onClose, userId }: Props) {
                   <View style={styles.editRow}>
                     <TextInput
                       style={styles.input}
-                      value={editingName}
+                      value={editingId === album.id ? editingName : ''}
                       onChangeText={setEditingName}
+                      placeholder="Nome da coleção"
+                      placeholderTextColor={colors.textMuted}
                       autoFocus
+                      testID="rename-input"
                     />
                     <TouchableOpacity onPress={() => handleRename(album.id)} disabled={loading}>
                       <Text style={styles.actionSave}>Salvar</Text>
@@ -139,13 +152,25 @@ export function UserAlbumsModal({ visible, onClose, userId }: Props) {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity style={styles.albumRow} onPress={() => handleSelect(album)} disabled={loading}>
+                  <TouchableOpacity
+                    style={styles.albumRow}
+                    onPress={() => handleSelect(album)}
+                    disabled={loading}
+                  >
                     <Text style={styles.check}>{activeUserAlbumId === album.id ? '✓' : '  '}</Text>
-                    <Text style={[styles.albumName, activeUserAlbumId === album.id && styles.albumNameActive]}>
+                    <Text
+                      style={[
+                        styles.albumName,
+                        activeUserAlbumId === album.id && styles.albumNameActive,
+                      ]}
+                    >
                       {album.name}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => { setEditingId(album.id); setEditingName(album.name); }}
+                      onPress={() => {
+                        setEditingName(album.name);
+                        setEditingId(album.id);
+                      }}
                       style={styles.iconBtn}
                     >
                       <Text style={styles.iconText}>✏️</Text>
@@ -210,7 +235,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: colors.primary,
   },
   actionSave: { color: colors.secondary, fontWeight: '700', fontSize: 14 },
   actionCancel: { color: colors.textMuted, fontSize: 16 },
@@ -223,7 +248,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 8,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: colors.primary,
   },
   createBtn: {
     backgroundColor: colors.primary,

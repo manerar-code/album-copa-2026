@@ -151,7 +151,7 @@ export function RootNavigator() {
       <Modal visible={profileVisible} transparent animationType="fade">
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
@@ -175,7 +175,7 @@ export function RootNavigator() {
 
             {/* Nome / apelido */}
             {editing ? (
-              <View style={styles.editRow}>
+              <View style={styles.editRow} testID="edit-row">
                 <TextInput
                   style={styles.nicknameInput}
                   value={nickname}
@@ -186,11 +186,13 @@ export function RootNavigator() {
                   maxLength={30}
                   returnKeyType="done"
                   onSubmitEditing={handleSaveNickname}
+                  testID="nickname-input"
                 />
                 <TouchableOpacity
                   style={[styles.saveBtn, saving && { opacity: 0.6 }]}
                   onPress={handleSaveNickname}
                   disabled={saving}
+                  testID="save-button"
                 >
                   {saving ? (
                     <ActivityIndicator size="small" color={colors.white} />
@@ -212,7 +214,10 @@ export function RootNavigator() {
 
             <TouchableOpacity
               style={styles.settingsBtn}
-              onPress={() => { setProfileVisible(false); setTypeSettingsVisible(true); }}
+              onPress={() => {
+                setProfileVisible(false);
+                setTypeSettingsVisible(true);
+              }}
             >
               <Text style={styles.settingsBtnText}>⚙️ Tipos controlados</Text>
             </TouchableOpacity>
@@ -335,6 +340,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginTop: 4,
+    flexShrink: 1,
   },
   nicknameInput: {
     flex: 1,
@@ -344,7 +350,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 8,
     fontSize: 14,
-    color: colors.textPrimary,
+    color: colors.primary,
   },
   saveBtn: {
     backgroundColor: colors.primary,

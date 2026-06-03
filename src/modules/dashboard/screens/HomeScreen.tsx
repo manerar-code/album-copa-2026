@@ -204,7 +204,7 @@ function HomeHeader({ firstName, onHelp, onRefresh, refreshing }: HomeHeaderProp
             <Text style={s.headerSub}>Álbum Copa 2026</Text>
           </View>
         </View>
-        <View style={s.headerRight}>
+        <View style={s.headerRight} testID="header-right">
           <View style={s.headerActions}>
             <TouchableOpacity
               style={[s.iconBtn, { borderColor: 'rgba(231,180,60,0.4)' }]}
@@ -325,7 +325,7 @@ const s = StyleSheet.create({
   },
   headerGreet: { fontFamily: fonts.display, fontSize: 20, color: colors.tx, letterSpacing: -0.4 },
   headerSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.txFaint, marginTop: 4 },
-  headerRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 9 },
+  headerRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 9, paddingRight: 56 },
   headerActions: { flexDirection: 'row', gap: 8 },
   iconBtn: {
     width: 34,

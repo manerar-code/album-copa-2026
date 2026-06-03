@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { useUserSettingsStore, displayType } from '@shared/store/userSettingsStore';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { SearchInput } from '@shared/components/SearchInput';
@@ -141,7 +141,7 @@ export function AlbumListScreen() {
             {availableTypes.map(t => (
               <TypeChip
                 key={t}
-                label={t}
+                label={displayType(t)}
                 active={selectedType === t}
                 onPress={() => setSelectedType(selectedType === t ? '' : t)}
               />
