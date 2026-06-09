@@ -17,11 +17,7 @@ export function AlbumStack() {
       }}
     >
       <Stack.Screen name="AlbumList" component={AlbumListScreen} options={{ headerShown: false }} />
-      <Stack.Screen
-        name="TeamDetail"
-        component={TeamDetailScreen}
-        options={({ route }) => ({ title: route.params.selecaoNome })}
-      />
+      <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ title: '' }} />
     </Stack.Navigator>
   );
 }

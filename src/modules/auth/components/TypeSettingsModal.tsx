@@ -2,7 +2,11 @@ import React, { useMemo } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { colors, spacing, radius, typography } from '@core/theme';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore, FIXED_TYPES, displayType } from '@shared/store/userSettingsStore';
+import {
+  useUserSettingsStore,
+  FIXED_TYPE_LABELS,
+  displayType,
+} from '@shared/store/userSettingsStore';
 
 interface Props {
   visible: boolean;
@@ -13,19 +17,24 @@ export function TypeSettingsModal({ visible, onClose }: Props) {
   const { figurinhas } = useStickerStore();
   const { trackedTypes, setTrackedTypes } = useUserSettingsStore();
 
-  // Apenas tipos configuráveis (sem os fixos)
-  const configurableTypes = useMemo(() => {
+  // Tipos configuráveis como labels de exibição (sem os fixos)
+  const configurableLabels = useMemo(() => {
     const set = new Set<string>();
-    for (const f of figurinhas) if (f.type && !FIXED_TYPES.includes(f.type)) set.add(f.type);
+    for (const f of figurinhas) {
+      if (f.type) {
+        const label = displayType(f.type);
+        if (!FIXED_TYPE_LABELS.includes(label)) set.add(label);
+      }
+    }
     return Array.from(set).sort();
   }, [figurinhas]);
 
-  const isTracked = (type: string) => !trackedTypes || trackedTypes.includes(type);
+  // trackedTypes já armazena labels normalizadas
+  const isTracked = (label: string) => !trackedTypes || trackedTypes.includes(label);
 
-  const toggle = async (type: string) => {
-    const allTypes = [...configurableTypes, ...FIXED_TYPES];
-    const current = trackedTypes ?? allTypes;
-    const next = current.includes(type) ? current.filter(t => t !== type) : [...current, type];
+  const toggle = async (label: string) => {
+    const current = trackedTypes ?? [...configurableLabels, ...FIXED_TYPE_LABELS];
+    const next = current.includes(label) ? current.filter(t => t !== label) : [...current, label];
     await setTrackedTypes(next);
   };
 
@@ -40,31 +49,29 @@ export function TypeSettingsModal({ visible, onClose }: Props) {
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Locked mandatory types */}
-            {FIXED_TYPES.map(type => (
-              <View key={type} style={styles.row} testID={`locked-${type}`}>
+            {FIXED_TYPE_LABELS.map(label => (
+              <View key={label} style={styles.row} testID={`locked-${label}`}>
                 <View style={[styles.check, styles.checkOn, styles.checkboxLocked]}>
                   <Text style={styles.checkIcon}>✓</Text>
                 </View>
-                <Text style={styles.typeLabel}>{displayType(type)}</Text>
+                <Text style={styles.typeLabel}>{label}</Text>
                 <Text style={styles.lockIcon}>🔒</Text>
               </View>
             ))}
 
-            <View style={styles.divider} />
+            {configurableLabels.length > 0 && <View style={styles.divider} />}
 
-            {configurableTypes.map(type => {
-              const on = isTracked(type);
+            {configurableLabels.map(label => {
+              const on = isTracked(label);
               return (
-                <TouchableOpacity key={type} style={styles.row} onPress={() => toggle(type)}>
+                <TouchableOpacity key={label} style={styles.row} onPress={() => toggle(label)}>
                   <View
                     style={[styles.check, on ? styles.checkOn : styles.checkOff]}
-                    testID={`checkbox-${type}`}
+                    testID={`checkbox-${label}`}
                   >
                     {on && <Text style={styles.checkIcon}>✓</Text>}
                   </View>
-                  <Text style={[styles.typeLabel, !on && styles.typeLabelOff]}>
-                    {displayType(type)}
-                  </Text>
+                  <Text style={[styles.typeLabel, !on && styles.typeLabelOff]}>{label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -88,8 +95,8 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     maxHeight: '70%',
   },
-  title: { ...typography.h2, color: colors.textPrimary, marginBottom: 4 },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md },
+  title: { ...typography.h2, color: '#0C1322', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: '#646F88', marginBottom: spacing.md },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -109,8 +116,8 @@ const styles = StyleSheet.create({
   checkOn: { backgroundColor: colors.secondary, borderColor: colors.secondary },
   checkOff: { borderWidth: 1.5, borderColor: colors.border },
   checkIcon: { color: colors.white, fontSize: 14, fontWeight: '800' },
-  typeLabel: { flex: 1, fontSize: 15, color: colors.textPrimary, fontWeight: '500' },
-  typeLabelOff: { color: colors.textMuted },
+  typeLabel: { flex: 1, fontSize: 15, color: '#0C1322', fontWeight: '500' },
+  typeLabelOff: { color: '#9AA6BE' },
   closeBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,

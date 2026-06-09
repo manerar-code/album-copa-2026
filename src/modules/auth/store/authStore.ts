@@ -5,16 +5,20 @@ interface AuthState {
   user: AppUser | null;
   isLoading: boolean;
   showAlbumsModal: boolean;
+  hideFloatingAvatar: boolean;
   setUser: (user: AppUser | null) => void;
   setLoading: (loading: boolean) => void;
   setShowAlbumsModal: (v: boolean) => void;
+  setHideFloatingAvatar: (v: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>(set => ({
   user: null,
   isLoading: true,
   showAlbumsModal: false,
+  hideFloatingAvatar: false,
   setUser: user => set({ user }),
   setLoading: isLoading => set({ isLoading }),
   setShowAlbumsModal: showAlbumsModal => set({ showAlbumsModal }),
+  setHideFloatingAvatar: hideFloatingAvatar => set({ hideFloatingAvatar }),
 }));

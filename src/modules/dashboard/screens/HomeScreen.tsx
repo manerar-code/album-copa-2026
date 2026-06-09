@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useShallow } from 'zustand/react/shallow';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useAuthStore } from '@modules/auth/store/authStore';
 import { useUserSettingsStore } from '@shared/store/userSettingsStore';
@@ -21,6 +22,7 @@ import { HelpModal } from '@shared/components/HelpModal';
 import { FlagImage } from '@shared/components/FlagImage';
 import { OnboardingContext } from '@core/providers/OnboardingContext';
 import { colors, fonts, spacing, radius, gradients, shadows } from '@core/theme';
+import { isTypeTracked } from '@shared/store/userSettingsStore';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { BottomTabParamList } from '@core/navigation/types';
 
@@ -29,8 +31,17 @@ type HomeNavProp = BottomTabNavigationProp<BottomTabParamList, 'Home'>;
 export function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const { selecoes, figurinhas, collection, applyCollection, activeUserAlbumId, isInitialized } =
-    useStickerStore();
-  const { user } = useAuthStore();
+    useStickerStore(
+      useShallow(s => ({
+        selecoes: s.selecoes,
+        figurinhas: s.figurinhas,
+        collection: s.collection,
+        applyCollection: s.applyCollection,
+        activeUserAlbumId: s.activeUserAlbumId,
+        isInitialized: s.isInitialized,
+      })),
+    );
+
   const { trackedTypes } = useUserSettingsStore();
   const { restartTutorial } = useContext(OnboardingContext);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,10 +58,10 @@ export function HomeScreen() {
     }
   }, [activeUserAlbumId, applyCollection]);
 
-  const trackedFigurinhas = useMemo(() => {
-    if (!trackedTypes) return figurinhas;
-    return figurinhas.filter(f => trackedTypes.includes(f.type));
-  }, [figurinhas, trackedTypes]);
+  const trackedFigurinhas = useMemo(
+    () => figurinhas.filter(f => isTypeTracked(trackedTypes, f.type)),
+    [figurinhas, trackedTypes],
+  );
 
   const stats = useMemo(() => {
     const total = trackedFigurinhas.length;
@@ -78,8 +89,6 @@ export function HomeScreen() {
       .sort((a, b) => b.dup - a.dup);
   }, [trackedFigurinhas, selecoes, collection]);
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Colecionador';
-
   if (!isInitialized) return <HomeSkeleton />;
 
   return (
@@ -93,38 +102,44 @@ export function HomeScreen() {
       >
         {/* Header */}
         <HomeHeader
-          firstName={firstName}
           onHelp={() => setHelpVisible(true)}
           onRefresh={onRefresh}
           refreshing={refreshing}
         />
 
         <View style={s.body}>
-          {/* Progress card */}
-          <GlassCard gold style={s.progressCard}>
-            <View style={s.progressTop}>
-              <View>
-                <Text style={s.progressLabel}>PROGRESSO GERAL</Text>
-                <Text style={s.progressCount}>
-                  {stats.owned.toLocaleString('pt-BR')} de {stats.total.toLocaleString('pt-BR')}{' '}
-                  figurinhas
+          {/* Hero Progress */}
+          <GlassCard gold style={s.heroCard}>
+            <View style={s.heroRow}>
+              <View style={s.heroLeft}>
+                <Text style={s.heroLabel}>PROGRESSO GERAL</Text>
+                <Text style={s.heroCount}>
+                  <Text style={s.heroCountNum}>{stats.owned.toLocaleString('pt-BR')}</Text>
+                  <Text style={s.heroCountOf}> / {stats.total.toLocaleString('pt-BR')}</Text>
                 </Text>
+                <Text style={s.heroHint}>figurinhas coletadas</Text>
               </View>
-              <Text style={s.progressPct}>{pct}%</Text>
+              <Text style={s.heroPct}>{pct}%</Text>
             </View>
-            <ProgressBar progress={pct / 100} height={8} />
+            <View style={{ marginTop: 14 }}>
+              <ProgressBar progress={pct / 100} height={10} />
+            </View>
           </GlassCard>
 
-          {/* Stats grid */}
+          {/* Stats 2×2 */}
           <View style={s.statsGrid}>
-            <StatTile emoji="📦" value={stats.total} label="Total" color={colors.goldSoft} />
-            <StatTile emoji="✅" value={stats.owned} label="Tenho" color={colors.green} />
-            <StatTile emoji="❌" value={stats.missing} label="Faltam" color={colors.red} />
-            <StatTile emoji="🔄" value={stats.duplicate} label="Repetidas" color={colors.gold} />
+            <View style={s.statsRow}>
+              <StatTile emoji="📦" value={stats.total} label="Total" color={colors.goldSoft} />
+              <StatTile emoji="✅" value={stats.owned} label="Tenho" color={colors.green} />
+            </View>
+            <View style={s.statsRow}>
+              <StatTile emoji="❌" value={stats.missing} label="Faltam" color={colors.red} />
+              <StatTile emoji="🔄" value={stats.duplicate} label="Repetidas" color={colors.gold} />
+            </View>
           </View>
 
           {/* Teams with duplicates */}
-          {teamsWithDuplicates.length > 0 && (
+          {teamsWithDuplicates.length > 0 ? (
             <>
               <SectionLabel
                 title="Repetidas por Seleção"
@@ -160,6 +175,14 @@ export function HomeScreen() {
                 </TouchableOpacity>
               ))}
             </>
+          ) : (
+            stats.total > 0 && (
+              <GlassCard style={s.emptyDupCard}>
+                <Text style={s.emptyDupEmoji}>🎉</Text>
+                <Text style={s.emptyDupTitle}>Sem repetidas!</Text>
+                <Text style={s.emptyDupSub}>Você não tem figurinhas repetidas ainda.</Text>
+              </GlassCard>
+            )
           )}
         </View>
       </ScrollView>
@@ -176,14 +199,14 @@ export function HomeScreen() {
 // ── Sub-components ──────────────────────────────────────────
 
 interface HomeHeaderProps {
-  firstName: string;
   onHelp: () => void;
   onRefresh: () => void;
   refreshing: boolean;
 }
 
-function HomeHeader({ firstName, onHelp, onRefresh, refreshing }: HomeHeaderProps) {
-  const { userAlbums, activeUserAlbumId } = useStickerStore();
+function HomeHeader({ onHelp, onRefresh, refreshing }: HomeHeaderProps) {
+  const userAlbums = useStickerStore(s => s.userAlbums);
+  const activeUserAlbumId = useStickerStore(s => s.activeUserAlbumId);
   const { setShowAlbumsModal } = useAuthStore();
   const albumName = userAlbums.find(a => a.id === activeUserAlbumId)?.name ?? '';
 
@@ -199,16 +222,16 @@ function HomeHeader({ firstName, onHelp, onRefresh, refreshing }: HomeHeaderProp
           <View style={s.soccerChip}>
             <Text style={{ fontSize: 19 }}>⚽</Text>
           </View>
-          <View>
-            <Text style={s.headerGreet}>Olá, {firstName}!</Text>
-            <Text style={s.headerSub}>Álbum Copa 2026</Text>
-          </View>
+          <Text style={s.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            Álbum Copa 2026
+          </Text>
         </View>
         <View style={s.headerRight} testID="header-right">
           <View style={s.headerActions}>
             <TouchableOpacity
               style={[s.iconBtn, { borderColor: 'rgba(231,180,60,0.4)' }]}
               onPress={onHelp}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={[s.iconTxt, { color: colors.gold, fontWeight: '800' }]}>?</Text>
             </TouchableOpacity>
@@ -216,15 +239,13 @@ function HomeHeader({ firstName, onHelp, onRefresh, refreshing }: HomeHeaderProp
               <Text style={s.iconTxt}>{refreshing ? '⏳' : '🔄'}</Text>
             </TouchableOpacity>
           </View>
-          <View style={s.headerChipRow}>
-            {!!albumName && (
-              <TouchableOpacity style={s.albumChip} onPress={() => setShowAlbumsModal(true)}>
-                <Text style={s.albumChipText} numberOfLines={1}>
-                  {albumName} ▾
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          {!!albumName && (
+            <TouchableOpacity style={s.albumChip} onPress={() => setShowAlbumsModal(true)}>
+              <Text style={s.albumChipText} numberOfLines={1} ellipsizeMode="tail">
+                {albumName} ▾
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
       <View style={s.headerBorder} />
@@ -309,10 +330,11 @@ const s = StyleSheet.create({
   headerRow1: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
+    paddingRight: 44,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 },
   soccerChip: {
     width: 38,
     height: 38,
@@ -323,9 +345,15 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(231,180,60,0.25)',
   },
-  headerGreet: { fontFamily: fonts.display, fontSize: 20, color: colors.tx, letterSpacing: -0.4 },
-  headerSub: { fontFamily: fonts.body, fontSize: 11.5, color: colors.txFaint, marginTop: 4 },
-  headerRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 9, paddingRight: 56 },
+  headerTitle: {
+    fontFamily: fonts.display,
+    fontSize: 16,
+    color: colors.tx,
+    letterSpacing: -0.3,
+    flex: 1,
+    minWidth: 0,
+  },
+  headerRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 },
   headerActions: { flexDirection: 'row', gap: 8 },
   iconBtn: {
     width: 34,
@@ -338,7 +366,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   iconTxt: { fontSize: 14 },
-  headerChipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   albumChip: {
     backgroundColor: 'rgba(231,180,60,0.12)',
     borderRadius: radius.pill,
@@ -346,6 +373,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 1,
     borderColor: 'rgba(231,180,60,0.3)',
+    maxWidth: 120,
   },
   albumChipText: { fontSize: 12, fontWeight: '700', color: colors.goldSoft },
   headerBorder: {
@@ -359,33 +387,46 @@ const s = StyleSheet.create({
 
   // Body
   body: { padding: spacing.md, gap: spacing.md },
-  progressCard: { padding: '4%' },
-  progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 11,
-  },
-  progressLabel: {
+
+  // Hero progress card
+  heroCard: { padding: spacing.lg },
+  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroLeft: { flex: 1, gap: 2 },
+  heroLabel: {
     fontFamily: fonts.bodyBold,
     fontSize: 10,
     color: colors.txFaint,
-    letterSpacing: 1.4,
+    letterSpacing: 1.6,
   },
-  progressCount: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.tx, marginTop: 4 },
-  progressPct: { fontFamily: fonts.display, fontSize: 34, color: colors.gold, letterSpacing: -1 },
+  heroCount: { marginTop: 6 },
+  heroCountNum: { fontFamily: fonts.display, fontSize: 26, color: colors.tx, letterSpacing: -0.5 },
+  heroCountOf: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.txMut },
+  heroHint: { fontFamily: fonts.body, fontSize: 12, color: colors.txFaint },
+  heroPct: { fontFamily: fonts.display, fontSize: 44, color: colors.gold, letterSpacing: -2 },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statTile: { padding: 15, borderRadius: radius.glass, width: '47%' },
-  statEmoji: { fontSize: 18, marginBottom: 10 },
-  statValue: { fontFamily: fonts.display, fontSize: 30, letterSpacing: -1 },
+  // Stats 2×2
+  statsGrid: { gap: 10 },
+  statsRow: { flexDirection: 'row', gap: 10 },
+  statTile: { flex: 1, padding: 14, borderRadius: radius.glass },
+  statEmoji: { fontSize: 20, marginBottom: 8 },
+  statValue: { fontFamily: fonts.display, fontSize: 28, letterSpacing: -1 },
   statLabel: {
     fontFamily: fonts.bodyBold,
     fontSize: 10,
     color: colors.txFaint,
     letterSpacing: 1.4,
-    marginTop: 3,
+    marginTop: 2,
   },
+
+  // Empty duplicates state
+  emptyDupCard: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: 6,
+  },
+  emptyDupEmoji: { fontSize: 32 },
+  emptyDupTitle: { fontFamily: fonts.bodySemiBold, fontSize: 16, color: colors.tx },
+  emptyDupSub: { fontFamily: fonts.body, fontSize: 13, color: colors.txFaint, textAlign: 'center' },
 
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: 10, fontWeight: '700', color: colors.txFaint, letterSpacing: 1.4 },

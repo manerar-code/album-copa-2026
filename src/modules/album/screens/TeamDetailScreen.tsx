@@ -1,11 +1,16 @@
-import React, { useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useMemo, useLayoutEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { View, Text, FlatList, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { useUserSettingsStore, isTypeTracked } from '@shared/store/userSettingsStore';
+import { useAuthStore } from '@modules/auth/store/authStore';
+import { cloudCollectionService } from '@shared/services/cloudCollectionService';
+import { logger } from '@shared/utils/logger';
 import { StickerCard } from '@modules/album/components/StickerCard';
 import { ProgressBar } from '@shared/components/ProgressBar';
 import { SkeletonBox } from '@shared/components/SkeletonBox';
+import { FlagImage } from '@shared/components/FlagImage';
 import {
   colors,
   fonts,
@@ -14,25 +19,131 @@ import {
   gradients,
   teamColors,
   defaultTeamColors,
-  teamFlagEmoji,
 } from '@core/theme';
 import type { TeamDetailScreenProps } from '@core/navigation/types';
 
 const NUM_COLUMNS = 3;
 const CARD_W = 96;
 
-export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
-  const { selecaoId, selecaoNome } = route.params;
-  const { figurinhas, selecoes, collection, isInitialized } = useStickerStore();
+export function TeamDetailScreen({ route, navigation }: TeamDetailScreenProps) {
+  const { selecaoId } = route.params;
+  const { figurinhas, selecoes, collection, isInitialized, activeUserAlbumId, syncUserId } =
+    useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
+  const { setHideFloatingAvatar } = useAuthStore();
+  const isSyncing = useRef(false);
+
+  // Oculta o avatar flutuante enquanto esta tela estiver em foco
+  useFocusEffect(
+    useCallback(() => {
+      setHideFloatingAvatar(true);
+      return () => setHideFloatingAvatar(false);
+    }, [setHideFloatingAvatar]),
+  );
 
   const selecao = selecoes.find(s => s.id === selecaoId);
+  const codigoFifa = selecao?.codigo_fifa ?? '';
+
+  // Seleção anterior e próxima (baseado na ordem do catálogo)
+  const currentIndex = useMemo(
+    () => selecoes.findIndex(s => s.id === selecaoId),
+    [selecoes, selecaoId],
+  );
+  const prevSelecao = currentIndex > 0 ? selecoes[currentIndex - 1] : null;
+  const nextSelecao =
+    currentIndex >= 0 && currentIndex < selecoes.length - 1 ? selecoes[currentIndex + 1] : null;
+
+  // Sincroniza a coleção com o Supabase antes de navegar para garantir sem perda de dados
+  const syncBeforeNavigate = useCallback(async () => {
+    if (!activeUserAlbumId || !syncUserId || isSyncing.current) return;
+    isSyncing.current = true;
+    try {
+      await cloudCollectionService.replaceAll(activeUserAlbumId, collection, syncUserId);
+    } catch (e) {
+      logger.warn('TeamDetail: sync before navigate failed', e);
+    } finally {
+      isSyncing.current = false;
+    }
+  }, [activeUserAlbumId, syncUserId, collection]);
+
+  const goToSelecao = useCallback(
+    async (target: typeof nextSelecao) => {
+      if (!target) return;
+      await syncBeforeNavigate();
+      navigation.replace('TeamDetail', { selecaoId: target.id, selecaoNome: target.nome });
+    },
+    [syncBeforeNavigate, navigation],
+  );
+
+  const goBackToList = useCallback(async () => {
+    await syncBeforeNavigate();
+    navigation.navigate('AlbumList');
+  }, [syncBeforeNavigate, navigation]);
+
+  // Injeta botões de navegação no header nativo com estilo uniforme
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerBackVisible: false,
+      // Centro: bandeira pequena + "Voltar" → volta para lista
+      headerTitle: () => (
+        <TouchableOpacity
+          style={hs.flagBtn}
+          onPress={() => void goBackToList()}
+          activeOpacity={0.75}
+        >
+          <FlagImage codigoFifa={codigoFifa} bandeiraUrl={selecao?.bandeira_url} size={18} />
+          <Text style={hs.flagBtnLabel}>Voltar</Text>
+        </TouchableOpacity>
+      ),
+      headerTitleAlign: 'center',
+      // Esquerda: seleção anterior (ou volta para lista)
+      headerLeft: () => (
+        <TouchableOpacity
+          style={hs.navBtn}
+          onPress={() => {
+            if (prevSelecao) void goToSelecao(prevSelecao);
+            else void goBackToList();
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={hs.navArrow}>‹</Text>
+          <Text style={hs.navLabel} numberOfLines={1}>
+            {prevSelecao ? prevSelecao.nome : 'Lista'}
+          </Text>
+        </TouchableOpacity>
+      ),
+      // Direita: próxima seleção
+      headerRight: nextSelecao
+        ? () => (
+            <TouchableOpacity
+              style={hs.navBtnRight}
+              onPress={() => void goToSelecao(nextSelecao)}
+              activeOpacity={0.7}
+            >
+              <Text style={hs.navLabel} numberOfLines={1}>
+                {nextSelecao.nome}
+              </Text>
+              <Text style={hs.navArrow}>›</Text>
+            </TouchableOpacity>
+          )
+        : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    navigation,
+    codigoFifa,
+    selecao?.bandeira_url,
+    prevSelecao?.id,
+    nextSelecao?.id,
+    goToSelecao,
+    goBackToList,
+  ]);
 
   const teamStickers = useMemo(
     () =>
       figurinhas
         .filter(f => f.selecao_id === selecaoId)
-        .filter(f => !trackedTypes || trackedTypes.includes(f.type))
+        .filter(f => isTypeTracked(trackedTypes, f.type))
         .sort((a, b) => a.ordem - b.ordem),
     [figurinhas, selecaoId, trackedTypes],
   );
@@ -41,9 +152,7 @@ export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
 
   const owned = teamStickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
   const pct = teamStickers.length > 0 ? Math.round((owned / teamStickers.length) * 100) : 0;
-  const codigoFifa = selecao?.codigo_fifa ?? '';
   const tc = teamColors[codigoFifa] ?? defaultTeamColors;
-  const flagEmoji = teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴';
 
   return (
     <SafeAreaView style={s.container}>
@@ -55,23 +164,18 @@ export function TeamDetailScreen({ route }: TeamDetailScreenProps) {
         style={s.header}
       >
         <View style={s.headerRow}>
-          <View style={s.flagBox}>
-            <Text style={{ fontSize: 24 }}>{flagEmoji}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.teamName}>{selecaoNome}</Text>
+          <FlagImage codigoFifa={codigoFifa} bandeiraUrl={selecao?.bandeira_url} size={36} />
+          <View style={s.headerInfo}>
             <Text style={s.teamSub}>
-              {codigoFifa} · {owned} de {teamStickers.length} figurinhas
+              {codigoFifa} · {owned}/{teamStickers.length} figurinhas
             </Text>
+            <ProgressBar
+              progress={pct / 100}
+              height={5}
+              color={pct === 100 ? colors.green : colors.gold}
+            />
           </View>
           <Text style={s.teamPct}>{pct}%</Text>
-        </View>
-        <View style={{ marginTop: 14 }}>
-          <ProgressBar
-            progress={pct / 100}
-            height={6}
-            color={pct === 100 ? colors.green : colors.gold}
-          />
         </View>
         <View style={s.headerBorder} />
       </LinearGradient>
@@ -146,21 +250,11 @@ function TeamDetailSkeleton() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.ink900 },
-  header: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 16, position: 'relative' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  flagBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.flagTile,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  teamName: { fontFamily: fonts.display, fontSize: 22, color: colors.tx, letterSpacing: -0.4 },
-  teamSub: { fontFamily: fonts.mono, fontSize: 12, color: colors.txFaint, marginTop: 2 },
-  teamPct: { fontFamily: fonts.display, fontSize: 24, color: colors.gold, letterSpacing: -1 },
+  header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, position: 'relative' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerInfo: { flex: 1, gap: 6 },
+  teamSub: { fontFamily: fonts.mono, fontSize: 12, color: colors.txFaint },
+  teamPct: { fontFamily: fonts.display, fontSize: 22, color: colors.gold, letterSpacing: -1 },
   headerBorder: {
     position: 'absolute',
     left: 0,
@@ -169,7 +263,54 @@ const s = StyleSheet.create({
     height: 1,
     backgroundColor: colors.lineSoft,
   },
-  flatList: { backgroundColor: colors.appBg },
+  flatList: { backgroundColor: colors.appBg, flex: 1 },
   grid: { padding: 14 },
   stickerWrapper: { flex: 1 / NUM_COLUMNS, padding: 7, alignItems: 'center' },
+});
+
+// Estilos dos botões de navegação no header nativo (esquerdo e direito, mesmo padrão)
+const hs = StyleSheet.create({
+  // Bandeira central — toque volta para lista
+  flagBtn: {
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  flagBtnLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.white,
+    letterSpacing: 0.3,
+    opacity: 0.85,
+  },
+  // Botão esquerdo (‹ nome)
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    maxWidth: 110,
+    overflow: 'hidden',
+  },
+  // Botão direito (nome ›)
+  navBtnRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    maxWidth: 110,
+    overflow: 'hidden',
+  },
+  navLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.white,
+    flexShrink: 1,
+  },
+  navArrow: {
+    fontSize: 20,
+    color: colors.white,
+    fontWeight: '600',
+    lineHeight: 24,
+    flexShrink: 0,
+  },
 });

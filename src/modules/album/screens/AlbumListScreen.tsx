@@ -10,8 +10,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useShallow } from 'zustand/react/shallow';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore, displayType } from '@shared/store/userSettingsStore';
+import { useUserSettingsStore, displayType, isTypeTracked } from '@shared/store/userSettingsStore';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { SearchInput } from '@shared/components/SearchInput';
@@ -23,13 +24,25 @@ import { colors, fonts, spacing, radius, shadows } from '@core/theme';
 import type { AlbumListScreenProps } from '@core/navigation/types';
 import type { Selecao } from '@shared/types';
 
+// Row height = padding (16*2) + content (~44) + marginBottom (8)
+const TEAM_ROW_HEIGHT = 84;
+
 export function AlbumListScreen() {
   const navigation = useNavigation<AlbumListScreenProps['navigation']>();
   const [query, setQuery] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const { selecoes, figurinhas, collection, applyCollection, activeUserAlbumId, isInitialized } =
-    useStickerStore();
+    useStickerStore(
+      useShallow(s => ({
+        selecoes: s.selecoes,
+        figurinhas: s.figurinhas,
+        collection: s.collection,
+        applyCollection: s.applyCollection,
+        activeUserAlbumId: s.activeUserAlbumId,
+        isInitialized: s.isInitialized,
+      })),
+    );
   const { trackedTypes } = useUserSettingsStore();
 
   const onRefresh = useCallback(async () => {
@@ -46,7 +59,7 @@ export function AlbumListScreen() {
   const availableTypes = useMemo(() => {
     const set = new Set<string>();
     for (const f of figurinhas) {
-      if (f.type && (!trackedTypes || trackedTypes.includes(f.type))) set.add(f.type);
+      if (f.type && isTypeTracked(trackedTypes, f.type)) set.add(displayType(f.type));
     }
     return Array.from(set).sort();
   }, [figurinhas, trackedTypes]);
@@ -55,10 +68,69 @@ export function AlbumListScreen() {
     if (!selectedType) return null;
     const ids = new Set<string>();
     for (const f of figurinhas) {
-      if (f.type === selectedType) ids.add(f.selecao_id);
+      if (f.type && displayType(f.type) === selectedType) ids.add(f.selecao_id);
     }
     return ids;
   }, [selectedType, figurinhas]);
+
+  const getTeamStats = useCallback(
+    (selecaoId: string) => {
+      const stickers = figurinhas
+        .filter(f => f.selecao_id === selecaoId)
+        .filter(f => isTypeTracked(trackedTypes, f.type));
+      const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
+      const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
+      return { total: stickers.length, owned, dup };
+    },
+    [figurinhas, collection, trackedTypes],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: Selecao }) => {
+      const { total, owned, dup } = getTeamStats(item.id);
+      const progress = total > 0 ? owned / total : 0;
+      const done = owned === total && total > 0;
+      return (
+        <TouchableOpacity
+          style={[s.teamRow, shadows.card]}
+          onPress={() =>
+            navigation.navigate('TeamDetail', { selecaoId: item.id, selecaoNome: item.nome })
+          }
+          activeOpacity={0.7}
+          accessibilityLabel={`${item.nome} (${item.codigo_fifa})`}
+          accessibilityRole="button"
+          accessibilityHint="Ver figurinhas desta seleção"
+        >
+          <FlagImage codigoFifa={item.codigo_fifa} bandeiraUrl={item.bandeira_url} size={28} />
+          <View style={s.info}>
+            <View style={s.nameRow}>
+              <Text style={s.name} numberOfLines={1} ellipsizeMode="tail">
+                {item.nome}
+              </Text>
+              {done && <Text style={{ fontSize: 11 }}>✅</Text>}
+            </View>
+            <View style={s.progressRow}>
+              <ProgressBar
+                progress={progress}
+                height={5}
+                color={done ? colors.green : colors.gold}
+              />
+              <Text style={s.sub}>
+                {owned}/{total} · {item.codigo_fifa}
+              </Text>
+            </View>
+          </View>
+          {dup > 0 && (
+            <View style={s.dupBadge}>
+              <Text style={s.dupBadgeText}>{dup} rep</Text>
+            </View>
+          )}
+          <Text style={s.arrow}>›</Text>
+        </TouchableOpacity>
+      );
+    },
+    [getTeamStats, navigation],
+  );
 
   if (!isInitialized) return <AlbumListSkeleton />;
 
@@ -69,52 +141,6 @@ export function AlbumListScreen() {
     const matchesType = !selecaoIdsComTipo || selecaoIdsComTipo.has(s.id);
     return matchesText && matchesType;
   });
-
-  const getTeamStats = (selecaoId: string) => {
-    const stickers = figurinhas
-      .filter(f => f.selecao_id === selecaoId)
-      .filter(f => !trackedTypes || trackedTypes.includes(f.type));
-    const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
-    const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
-    return { total: stickers.length, owned, dup };
-  };
-
-  const renderItem = ({ item }: { item: Selecao }) => {
-    const { total, owned, dup } = getTeamStats(item.id);
-    const progress = total > 0 ? owned / total : 0;
-    const done = owned === total && total > 0;
-    return (
-      <TouchableOpacity
-        style={[s.teamRow, shadows.card]}
-        onPress={() =>
-          navigation.navigate('TeamDetail', { selecaoId: item.id, selecaoNome: item.nome })
-        }
-        activeOpacity={0.7}
-      >
-        <FlagImage codigoFifa={item.codigo_fifa} bandeiraUrl={item.bandeira_url} size={28} />
-        <View style={s.info}>
-          <View style={s.nameRow}>
-            <Text style={s.name} numberOfLines={1}>
-              {item.nome}
-            </Text>
-            {done && <Text style={{ fontSize: 11 }}>✅</Text>}
-          </View>
-          <View style={s.progressRow}>
-            <ProgressBar progress={progress} height={5} color={done ? colors.green : colors.gold} />
-            <Text style={s.sub}>
-              {owned}/{total} · {item.codigo_fifa}
-            </Text>
-          </View>
-        </View>
-        {dup > 0 && (
-          <View style={s.dupBadge}>
-            <Text style={s.dupBadgeText}>{dup} rep</Text>
-          </View>
-        )}
-        <Text style={s.arrow}>›</Text>
-      </TouchableOpacity>
-    );
-  };
 
   return (
     <SafeAreaView style={s.safeArea}>
@@ -156,6 +182,11 @@ export function AlbumListScreen() {
         contentContainerStyle={s.list}
         ListEmptyComponent={<EmptyState emoji="🔍" title="Nenhuma seleção encontrada" />}
         showsVerticalScrollIndicator={false}
+        getItemLayout={(_data, index) => ({
+          length: TEAM_ROW_HEIGHT,
+          offset: TEAM_ROW_HEIGHT * index,
+          index,
+        })}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
         }
@@ -264,6 +295,7 @@ const s = StyleSheet.create({
     paddingVertical: 2,
     borderWidth: 1,
     borderColor: 'rgba(231,180,60,0.35)',
+    maxWidth: 64,
   },
   dupBadgeText: { fontSize: 11, fontWeight: '700', color: colors.gold },
 });

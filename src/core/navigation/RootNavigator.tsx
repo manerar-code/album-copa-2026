@@ -33,16 +33,16 @@ import { StatsScreen } from '@modules/dashboard/screens/StatsScreen';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
-const tabIcons: Record<string, string> = {
+export const tabIcons: Record<string, string> = {
   Home: '🏠',
   Album: '📖',
-  Missing: '❌',
+  Missing: '🔍',
   Duplicates: '🔄',
   Stats: '📊',
 };
 
 export function RootNavigator() {
-  const { user, setUser, showAlbumsModal, setShowAlbumsModal } = useAuthStore();
+  const { user, setUser, showAlbumsModal, setShowAlbumsModal, hideFloatingAvatar } = useAuthStore();
   const { showOnboarding, completeOnboarding } = useContext(OnboardingContext);
   const [profileVisible, setProfileVisible] = useState(false);
   const [typeSettingsVisible, setTypeSettingsVisible] = useState(false);
@@ -80,13 +80,13 @@ export function RootNavigator() {
   };
 
   const handleSignOut = async () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       // eslint-disable-next-line no-undef
-      const confirmed = window.confirm('Sair da conta? Coleção salva na nuvem.');
+      const confirmed = (window as Window).confirm('Sair da conta? Coleção salva na nuvem.');
       if (!confirmed) return;
       await authService.signOut().catch(() => {});
       // eslint-disable-next-line no-undef
-      window.location.href = window.location.origin;
+      (window as Window).location.href = (window as Window).location.origin;
       return;
     }
     Alert.alert('Sair da conta', 'Sua coleção fica salva na nuvem. Deseja sair?', [
@@ -115,8 +115,9 @@ export function RootNavigator() {
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
           tabBarStyle: {
-            height: 83,
-            paddingTop: 10,
+            height: 60,
+            paddingTop: 4,
+            paddingBottom: 4,
             backgroundColor: colors.white,
             borderTopColor: colors.border,
             borderTopWidth: 1,
@@ -136,16 +137,18 @@ export function RootNavigator() {
         <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
       </Tab.Navigator>
 
-      {/* Avatar flutuante */}
-      <TouchableOpacity style={styles.avatarBtn} onPress={openProfile} activeOpacity={0.8}>
-        {user.avatar_url ? (
-          <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      {/* Avatar flutuante — oculto no TeamDetail via useFocusEffect */}
+      {!hideFloatingAvatar && (
+        <TouchableOpacity style={styles.avatarBtn} onPress={openProfile} activeOpacity={0.8}>
+          {user.avatar_url ? (
+            <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarFallback}>
+              <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Modal de perfil */}
       <Modal visible={profileVisible} transparent animationType="fade">
@@ -330,17 +333,16 @@ const styles = StyleSheet.create({
   },
   profileName: {
     ...typography.h3,
-    color: colors.textPrimary,
+    color: '#0C1322',
     textAlign: 'center',
   },
   editIcon: { fontSize: 14 },
   editRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    width: '100%',
+    gap: 6,
+    alignSelf: 'stretch',
     alignItems: 'center',
     marginTop: 4,
-    flexShrink: 1,
   },
   nicknameInput: {
     flex: 1,
@@ -351,13 +353,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     color: colors.primary,
+    minWidth: 0,
   },
   saveBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 10,
-    minWidth: 64,
+    flexShrink: 0,
     alignItems: 'center',
   },
   saveBtnText: { fontSize: 13, fontWeight: '700', color: colors.white },
