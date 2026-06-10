@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useUserSettingsStore, isTypeTracked } from '@shared/store/userSettingsStore';
 import { useAuthStore } from '@modules/auth/store/authStore';
-import { cloudCollectionService } from '@shared/services/cloudCollectionService';
+import { collectionService } from '@shared/services/collectionService';
 import { logger } from '@shared/utils/logger';
 import { StickerCard } from '@modules/album/components/StickerCard';
 import { ProgressBar } from '@shared/components/ProgressBar';
@@ -27,8 +27,7 @@ const CARD_W = 96;
 
 export function TeamDetailScreen({ route, navigation }: TeamDetailScreenProps) {
   const { selecaoId } = route.params;
-  const { figurinhas, selecoes, collection, isInitialized, activeUserAlbumId, syncUserId } =
-    useStickerStore();
+  const { figurinhas, selecoes, collection, isInitialized } = useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
   const { setHideFloatingAvatar } = useAuthStore();
   const isSyncing = useRef(false);
@@ -53,18 +52,20 @@ export function TeamDetailScreen({ route, navigation }: TeamDetailScreenProps) {
   const nextSelecao =
     currentIndex >= 0 && currentIndex < selecoes.length - 1 ? selecoes[currentIndex + 1] : null;
 
-  // Sincroniza a coleção com o Supabase antes de navegar para garantir sem perda de dados
+  // Garante que a coleção está salva localmente antes de navegar.
+  // O sync com a nuvem já acontece em tempo real via upsertOne a cada toque —
+  // aqui só forçamos um save local extra para não perder nenhuma alteração em voo.
   const syncBeforeNavigate = useCallback(async () => {
-    if (!activeUserAlbumId || !syncUserId || isSyncing.current) return;
+    if (isSyncing.current) return;
     isSyncing.current = true;
     try {
-      await cloudCollectionService.replaceAll(activeUserAlbumId, collection, syncUserId);
+      await collectionService.save(collection);
     } catch (e) {
-      logger.warn('TeamDetail: sync before navigate failed', e);
+      logger.warn('TeamDetail: local save before navigate failed', e);
     } finally {
       isSyncing.current = false;
     }
-  }, [activeUserAlbumId, syncUserId, collection]);
+  }, [collection]);
 
   const goToSelecao = useCallback(
     async (target: typeof nextSelecao) => {

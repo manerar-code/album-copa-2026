@@ -108,6 +108,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
 
   toggleSticker: async (figurinhaId: string) => {
     const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
+    const previousCollection = collection;
     const current = collection[figurinhaId] ?? 'missing';
     const next = STATUS_CYCLE[current];
     const updated = { ...collection, [figurinhaId]: next };
@@ -117,9 +118,20 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
         ? { ...allCollections, [activeUserAlbumId]: updated }
         : allCollections,
     });
+
+    // 1. Salva localmente (AsyncStorage/localStorage). Só reverte se isto falhar.
     try {
       await collectionService.save(updated);
-      if (activeUserAlbumId && syncUserId) {
+    } catch (saveError) {
+      logger.error('toggleSticker: local save failed — reverting', saveError);
+      set({ collection: previousCollection });
+      return;
+    }
+
+    // 2. Sincroniza com a nuvem — em background, sem reverter o estado local em caso de falha.
+    //    Dados estão seguros no AsyncStorage; a próxima inicialização fará o re-sync.
+    if (activeUserAlbumId && syncUserId) {
+      try {
         if (useSyncStore.getState().status === 'offline') {
           if (next !== 'missing') {
             await offlineQueueService.enqueue({
@@ -132,10 +144,10 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
         } else {
           await cloudCollectionService.upsertOne(activeUserAlbumId, figurinhaId, next, syncUserId);
         }
+      } catch (syncError) {
+        // Falha de rede: dados estão no AsyncStorage e serão re-sincronizados ao reabrir o app.
+        logger.warn('toggleSticker: cloud sync failed (will retry on reload)', syncError);
       }
-    } catch (error) {
-      logger.error('Failed to persist collection:', error);
-      set({ collection });
     }
   },
 
@@ -183,11 +195,24 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
   },
 
   resetCollection: async () => {
-    const { activeUserAlbumId, syncUserId } = get();
-    set({ collection: {} });
-    await collectionService.reset();
-    if (activeUserAlbumId && syncUserId) {
-      await cloudCollectionService.replaceAll(activeUserAlbumId, {}, syncUserId);
+    const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
+    // Snapshot for rollback
+    const previousCollection = collection;
+    const previousAllCollections = allCollections;
+    set({
+      collection: {},
+      allCollections: activeUserAlbumId
+        ? { ...allCollections, [activeUserAlbumId]: {} }
+        : allCollections,
+    });
+    try {
+      await collectionService.reset();
+      if (activeUserAlbumId && syncUserId) {
+        await cloudCollectionService.replaceAll(activeUserAlbumId, {}, syncUserId);
+      }
+    } catch (error) {
+      logger.error('Failed to reset collection:', error);
+      set({ collection: previousCollection, allCollections: previousAllCollections });
     }
   },
 

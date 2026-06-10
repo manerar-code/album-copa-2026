@@ -100,12 +100,6 @@ export function CromoCard({
             )}
             <Text style={[s.flagText, { fontSize: width * 0.18 }]}>{flag}</Text>
           </View>
-          {/* Owned check */}
-          {state === 'owned' && (
-            <View style={s.ownedChk}>
-              <Text style={{ fontSize: width * 0.12, color: colors.green }}>✓</Text>
-            </View>
-          )}
           {/* Name plate */}
           <LinearGradient
             colors={['transparent', 'rgba(7,12,22,0.78)']}
@@ -127,17 +121,23 @@ export function CromoCard({
   );
 
   const cardContent = isMissing ? (
-    <View style={[s.outerMissing, { width, height: h, borderRadius: radius.cromo }]}>{inner}</View>
-  ) : (
+    <View
+      testID="cromo-missing"
+      style={[s.outerMissing, { width, height: h, borderRadius: radius.cromo }]}
+    >
+      {inner}
+    </View>
+  ) : isDup ? (
     <LinearGradient
+      testID="cromo-duplicate"
       colors={gradients.cromoGold.colors}
       start={gradients.cromoGold.start}
       end={gradients.cromoGold.end}
-      style={[s.outerOwned, { width, height: h, borderRadius: radius.cromo }]}
+      style={[s.outerDup, { width, height: h, borderRadius: radius.cromo }]}
     >
       {inner}
       {/* Duplicate badge ×N */}
-      {isDup && dupCount > 1 && (
+      {dupCount > 1 && (
         <LinearGradient
           colors={[colors.goldSoft, colors.gold]}
           start={{ x: 0, y: 0 }}
@@ -148,6 +148,14 @@ export function CromoCard({
         </LinearGradient>
       )}
     </LinearGradient>
+  ) : (
+    /* owned — plain View, green border, no check icon */
+    <View
+      testID="cromo-owned"
+      style={[s.outerOwned, { width, height: h, borderRadius: radius.cromo }]}
+    >
+      {inner}
+    </View>
   );
 
   if (onPress) {
@@ -161,8 +169,12 @@ export function CromoCard({
 }
 
 const s = StyleSheet.create({
-  outerOwned: {
+  outerDup: {
     padding: 2.5,
+  },
+  outerOwned: {
+    borderWidth: 2.5,
+    borderColor: colors.owned.border,
   },
   outerMissing: {
     borderWidth: 1.5,
@@ -206,17 +218,6 @@ const s = StyleSheet.create({
   },
   flagText: {
     lineHeight: undefined,
-  },
-  ownedChk: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   plusSign: {
     position: 'absolute',
