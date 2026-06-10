@@ -203,7 +203,7 @@ export function OnboardingModal({ visible, onComplete }: OnboardingModalProps) {
         style={s.root}
       >
         {/* Top bar */}
-        <View style={s.topBar}>
+        <View style={s.topBar} testID="top-bar">
           <TouchableOpacity onPress={onComplete} testID="skip-button">
             <Text style={s.skipText}>Pular</Text>
           </TouchableOpacity>
@@ -214,7 +214,7 @@ export function OnboardingModal({ visible, onComplete }: OnboardingModalProps) {
         </View>
 
         {/* Slide content */}
-        <View style={s.content}>
+        <View style={s.content} testID="content-area">
           <SlideComponent />
         </View>
 
@@ -246,7 +246,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 22,
-    paddingBottom: 0,
+    paddingTop: 12,
+    paddingBottom: 12,
+    marginBottom: 8,
   },
   skipText: { fontSize: 13, fontWeight: '700', color: colors.txFaint },
   stepPill: {
@@ -262,6 +264,7 @@ const s = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 26,
     justifyContent: 'center',
+    paddingBottom: 16,
   },
   slide: { alignItems: 'center' },
   slideTitle: {

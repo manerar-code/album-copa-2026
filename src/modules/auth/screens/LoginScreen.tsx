@@ -91,6 +91,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           onPress={handleGoogleLogin}
           activeOpacity={0.8}
           disabled={loading}
+          accessibilityLabel="Entrar com Google"
+          accessibilityRole="button"
         >
           <GoldButton
             label="Entrar com Google"

@@ -17,7 +17,7 @@ export function StatsScreen() {
   const typeStats = useMemo(() => {
     const map = new Map<string, { total: number; owned: number; duplicate: number }>();
     for (const f of figurinhas) {
-      if (trackedTypes && !trackedTypes.includes(f.type)) continue;
+      if (trackedTypes && f.type && !trackedTypes.includes(f.type)) continue;
       const t = displayType(f.type) || 'Sem tipo';
       const status = collection[f.id] ?? 'missing';
       const e = map.get(t) ?? { total: 0, owned: 0, duplicate: 0 };

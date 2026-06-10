@@ -39,7 +39,7 @@ export function DuplicatesScreen() {
         const duplicates = figurinhas.filter(f => {
           const isDuplicate = (collection[f.id] ?? 'missing') === 'duplicate';
           const matchesSelecao = f.selecao_id === selecao.id;
-          const matchesType = !trackedTypes || trackedTypes.includes(f.type);
+          const matchesType = !trackedTypes || !f.type || trackedTypes.includes(f.type);
           const matchesQuery =
             !q ||
             f.numero.toLowerCase().includes(q) ||

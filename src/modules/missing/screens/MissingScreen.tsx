@@ -26,7 +26,7 @@ export function MissingScreen() {
         const missing = figurinhas.filter(f => {
           const isMissing = (collection[f.id] ?? 'missing') === 'missing';
           const matchesSelecao = f.selecao_id === selecao.id;
-          const matchesType = !trackedTypes || trackedTypes.includes(f.type);
+          const matchesType = !trackedTypes || !f.type || trackedTypes.includes(f.type);
           const matchesQuery =
             !q ||
             f.numero.toLowerCase().includes(q) ||

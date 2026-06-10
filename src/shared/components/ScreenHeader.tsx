@@ -22,7 +22,8 @@ export function ScreenHeader({
   refreshing,
   rightContent,
 }: Props) {
-  const { userAlbums, activeUserAlbumId } = useStickerStore();
+  const userAlbums = useStickerStore(s => s.userAlbums);
+  const activeUserAlbumId = useStickerStore(s => s.activeUserAlbumId);
   const { setShowAlbumsModal } = useAuthStore();
   const activeAlbumName = userAlbums.find(a => a.id === activeUserAlbumId)?.name ?? '';
 
@@ -63,13 +64,14 @@ export function ScreenHeader({
       </View>
 
       {/* Row 2: subtitle + album chip */}
-      <View style={s.row2}>
+      <View style={s.row2} testID="screen-header-row2">
         {!!subtitle && <Text style={s.subtitle}>{subtitle}</Text>}
         {!!activeAlbumName && (
           <TouchableOpacity
             onPress={() => setShowAlbumsModal(true)}
             style={s.albumChip}
             hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            testID="album-chip"
           >
             <Text style={s.albumChipText} numberOfLines={1}>
               {activeAlbumName} ▾
@@ -125,6 +127,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 8,
+    marginRight: 48,
     gap: spacing.sm,
   },
   subtitle: {
@@ -139,7 +142,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 1,
     borderColor: 'rgba(231,180,60,0.3)',
-    maxWidth: 180,
+    maxWidth: 140,
   },
   albumChipText: {
     fontFamily: fonts.bodyBold,

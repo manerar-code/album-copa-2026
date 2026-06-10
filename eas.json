@@ -24,12 +24,18 @@
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fmsojsxadjdigwppqnfa.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtc29qc3hhZGpkaWd3cHBxbmZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxNDYwOTIsImV4cCI6MjA5NTcyMjA5Mn0.nSjP4mgtfTZ2Re2__v-1i6CcNT4QJ5bgrrfPy4O3KJI"
+      },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "autoIncrement": true
       },
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.1",
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "autoIncrement": true
       }
     }
   },

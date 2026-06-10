@@ -1,6 +1,5 @@
 import React, { act } from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { BackHandler } from 'react-native';
 import { OnboardingModal } from '@modules/onboarding/components/OnboardingModal';
 
 let backHandlerCallback: (() => boolean) | null = null;
@@ -15,6 +14,81 @@ jest.mock('react-native', () => {
   return RN;
 });
 
+describe('OnboardingModal layout — topBar styles', () => {
+  it('topBar has paddingTop >= 12', () => {
+    const onComplete = jest.fn();
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
+    const topBar = getByTestId('top-bar');
+    expect(topBar).toHaveStyle({ paddingTop: 12 });
+  });
+
+  it('topBar has paddingBottom >= 12', () => {
+    const onComplete = jest.fn();
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
+    const topBar = getByTestId('top-bar');
+    expect(topBar).toHaveStyle({ paddingBottom: 12 });
+  });
+
+  it('topBar has marginBottom >= 8', () => {
+    const onComplete = jest.fn();
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
+    const topBar = getByTestId('top-bar');
+    expect(topBar).toHaveStyle({ marginBottom: 8 });
+  });
+
+  it('content has paddingBottom >= 16', () => {
+    const onComplete = jest.fn();
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
+    const content = getByTestId('content-area');
+    expect(content).toHaveStyle({ paddingBottom: 16 });
+  });
+});
+
+describe('OnboardingModal layout — no overlap', () => {
+  it('slide 1 renders Pular in topBar without overlapping slide title', () => {
+    const onComplete = jest.fn();
+    const { getByTestId, getByText } = render(
+      <OnboardingModal visible={true} onComplete={onComplete} />,
+    );
+    expect(getByTestId('top-bar')).toBeTruthy();
+    expect(getByText('Pular')).toBeTruthy();
+    expect(getByText('Como marcar figurinhas')).toBeTruthy();
+    const topBar = getByTestId('top-bar');
+    expect(topBar).toHaveStyle({ paddingBottom: 12, marginBottom: 8 });
+  });
+
+  it('slide 1 renders cycle legend text fully visible above Próximo button', () => {
+    const onComplete = jest.fn();
+    const { getByText } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
+    expect(getByText('Falta → Tenho → Repetida → Falta')).toBeTruthy();
+    expect(getByText('Próximo')).toBeTruthy();
+  });
+
+  it('slide 2 renders Passo 2 de 3 without overlapping card items', () => {
+    const onComplete = jest.fn();
+    const { getByText, getByTestId } = render(
+      <OnboardingModal visible={true} onComplete={onComplete} />,
+    );
+    const nextBtn = getByText('Próximo');
+    fireEvent.press(nextBtn);
+    expect(getByText('Crie sua conta')).toBeTruthy();
+    expect(getByText('Passo 2 de 3')).toBeTruthy();
+    expect(getByTestId('top-bar')).toHaveStyle({ paddingBottom: 12, marginBottom: 8 });
+  });
+
+  it('slide 3 renders Concluir with all content above it visible', () => {
+    const onComplete = jest.fn();
+    const { getByText, getByTestId } = render(
+      <OnboardingModal visible={true} onComplete={onComplete} />,
+    );
+    fireEvent.press(getByText('Próximo'));
+    fireEvent.press(getByText('Próximo'));
+    expect(getByText('Conheça o App')).toBeTruthy();
+    expect(getByText('Concluir')).toBeTruthy();
+    expect(getByTestId('content-area')).toHaveStyle({ paddingBottom: 16 });
+  });
+});
+
 describe('OnboardingModal', () => {
   beforeEach(() => {
     backHandlerCallback = null;
@@ -26,17 +100,13 @@ describe('OnboardingModal', () => {
 
   it('does not render when visible is false', () => {
     const onComplete = jest.fn();
-    const { queryByTestId } = render(
-      <OnboardingModal visible={false} onComplete={onComplete} />,
-    );
+    const { queryByTestId } = render(<OnboardingModal visible={false} onComplete={onComplete} />);
     expect(queryByTestId('skip-button')).toBeNull();
   });
 
   it('shows Slide 1 by default when visible is true', () => {
     const onComplete = jest.fn();
-    const { getByText } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByText } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     expect(getByText('Como marcar figurinhas')).toBeTruthy();
   });
 
@@ -61,9 +131,7 @@ describe('OnboardingModal', () => {
 
   it('calls onComplete when Concluir is pressed on Slide 3', () => {
     const onComplete = jest.fn();
-    const { getByTestId } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     fireEvent.press(getByTestId('next-button'));
     fireEvent.press(getByTestId('next-button'));
     fireEvent.press(getByTestId('complete-button'));
@@ -72,18 +140,14 @@ describe('OnboardingModal', () => {
 
   it('calls onComplete when Pular is pressed on any slide', () => {
     const onComplete = jest.fn();
-    const { getByTestId } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     fireEvent.press(getByTestId('skip-button'));
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
   it('calls onComplete when Pular is pressed on Slide 2', () => {
     const onComplete = jest.fn();
-    const { getByTestId } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     fireEvent.press(getByTestId('next-button'));
     fireEvent.press(getByTestId('skip-button'));
     expect(onComplete).toHaveBeenCalledTimes(1);
@@ -91,9 +155,7 @@ describe('OnboardingModal', () => {
 
   it('calls onComplete when Pular is pressed on Slide 3', () => {
     const onComplete = jest.fn();
-    const { getByTestId } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     fireEvent.press(getByTestId('next-button'));
     fireEvent.press(getByTestId('next-button'));
     fireEvent.press(getByTestId('skip-button'));
@@ -102,9 +164,7 @@ describe('OnboardingModal', () => {
 
   it('tapping DemoStickerCard cycles through states', () => {
     const onComplete = jest.fn();
-    const { getByTestId } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     const demoCard = getByTestId('demo-sticker-card');
     expect(demoCard).toBeTruthy();
     fireEvent.press(demoCard);
@@ -131,9 +191,7 @@ describe('OnboardingModal', () => {
 
   it('Android BackHandler on Slide 1 does not navigate back', async () => {
     const onComplete = jest.fn();
-    const { getByText } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByText } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     expect(getByText('Como marcar figurinhas')).toBeTruthy();
     expect(backHandlerCallback).not.toBeNull();
     await act(async () => {
@@ -158,9 +216,7 @@ describe('OnboardingModal', () => {
 
   it('does not call onComplete when navigating between slides', () => {
     const onComplete = jest.fn();
-    const { getByTestId } = render(
-      <OnboardingModal visible={true} onComplete={onComplete} />,
-    );
+    const { getByTestId } = render(<OnboardingModal visible={true} onComplete={onComplete} />);
     fireEvent.press(getByTestId('next-button'));
     expect(onComplete).not.toHaveBeenCalled();
     fireEvent.press(getByTestId('next-button'));

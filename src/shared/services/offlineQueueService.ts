@@ -51,7 +51,13 @@ function createService(): OfflineQueueService {
 
     async enqueue(entry: Omit<QueueEntry, 'id'>): Promise<void> {
       if (entry.status === 'missing') return;
-      if (!db) return;
+      if (!db) {
+        logger.warn(
+          'offlineQueueService.enqueue called before init() — entry dropped',
+          entry.figurinhaId,
+        );
+        return;
+      }
       try {
         await db.runAsync(
           'INSERT INTO offline_queue (user_album_id, figurinha_id, status, created_at) VALUES (?, ?, ?, ?)',
@@ -78,9 +84,7 @@ function createService(): OfflineQueueService {
           status: string;
           created_at: number;
         }
-        const rows = await db.getAllAsync<Row>(
-          'SELECT * FROM offline_queue ORDER BY id ASC',
-        );
+        const rows = await db.getAllAsync<Row>('SELECT * FROM offline_queue ORDER BY id ASC');
 
         for (const row of rows) {
           try {

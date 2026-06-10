@@ -1,8 +1,10 @@
-import React from 'react';
-import { Alert, View, StyleSheet } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { CromoCard } from '@shared/components/CromoCard';
 import { teamFlagEmoji } from '@core/theme';
+import { crossPlatformAlert } from '@shared/utils/crossPlatformAlert';
 
 interface StickerCardProps {
   figurinhaId: string;
@@ -31,20 +33,39 @@ export function StickerCard({
   width,
 }: StickerCardProps) {
   const { toggleSticker, getStatus, getCrossAlbumDuplicateSources, setStatus, userAlbums } =
-    useStickerStore();
+    useStickerStore(
+      useShallow(s => ({
+        toggleSticker: s.toggleSticker,
+        getStatus: s.getStatus,
+        getCrossAlbumDuplicateSources: s.getCrossAlbumDuplicateSources,
+        setStatus: s.setStatus,
+        userAlbums: s.userAlbums,
+      })),
+    );
 
   const status = getStatus(figurinhaId);
   const crossAlbumSources = getCrossAlbumDuplicateSources(figurinhaId);
   const isCrossAlbumHighlighted = status === 'missing' && crossAlbumSources.length > 0;
   const flag = codigoFifa ? (teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴') : '🏴';
 
-  const handlePress = isCrossAlbumHighlighted
-    ? async () => {
+  // Debounce ref: prevents double-tap within 300ms from firing multiple toggles.
+  // The optimistic UI update inside toggleSticker/setStatus is immediate —
+  // only the second tap within the window is suppressed.
+  const lastTapRef = useRef<number>(0);
+  const DEBOUNCE_MS = 300;
+
+  const handlePress = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapRef.current < DEBOUNCE_MS) return;
+    lastTapRef.current = now;
+
+    if (isCrossAlbumHighlighted) {
+      void (async () => {
         await setStatus(figurinhaId, 'owned');
         const sourceNames = crossAlbumSources
           .map(id => userAlbums.find(a => a.id === id)?.name ?? id)
           .join(', ');
-        Alert.alert(
+        crossPlatformAlert(
           'Atualizar coleção',
           `Esta figurinha está repetida em ${sourceNames}. Deseja marcá-la como "tenho" lá também?`,
           [
@@ -59,8 +80,18 @@ export function StickerCard({
             },
           ],
         );
-      }
-    : () => toggleSticker(figurinhaId);
+      })();
+    } else {
+      void toggleSticker(figurinhaId);
+    }
+  }, [
+    isCrossAlbumHighlighted,
+    figurinhaId,
+    toggleSticker,
+    setStatus,
+    crossAlbumSources,
+    userAlbums,
+  ]);
 
   const card = (
     <CromoCard
@@ -74,6 +105,9 @@ export function StickerCard({
       state={status}
       width={width}
       onPress={handlePress}
+      accessibilityLabel={`Figurinha ${numero}${descricao ? ` ${descricao}` : ''}, estado: ${status}`}
+      accessibilityRole="button"
+      accessibilityHint="Toque para alterar o estado da figurinha"
     />
   );
 

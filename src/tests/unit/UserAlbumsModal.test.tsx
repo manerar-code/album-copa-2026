@@ -134,6 +134,84 @@ describe('UserAlbumsModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  describe('album name fallback (BUG-01)', () => {
+    it('renders "Coleção sem nome" when album name is empty string', () => {
+      useStickerStore.setState({
+        userAlbums: [{ id: 'a1', name: '', user_id: 'u1', created_at: '2024-01-01' }],
+        activeUserAlbumId: 'a1',
+        allCollections: { a1: {} },
+      });
+
+      const { getByText } = render(
+        <UserAlbumsModal visible={true} onClose={jest.fn()} userId="u1" />,
+      );
+      expect(getByText('Coleção sem nome')).toBeTruthy();
+    });
+
+    it('renders "Coleção sem nome" when album name is null', () => {
+      useStickerStore.setState({
+        userAlbums: [
+          { id: 'a1', name: null as unknown as string, user_id: 'u1', created_at: '2024-01-01' },
+        ],
+        activeUserAlbumId: 'a1',
+        allCollections: { a1: {} },
+      });
+
+      const { getByText } = render(
+        <UserAlbumsModal visible={true} onClose={jest.fn()} userId="u1" />,
+      );
+      expect(getByText('Coleção sem nome')).toBeTruthy();
+    });
+
+    it('renders the actual album name when present', () => {
+      useStickerStore.setState({
+        userAlbums: [{ id: 'a1', name: 'Copa 2026', user_id: 'u1', created_at: '2024-01-01' }],
+        activeUserAlbumId: 'a1',
+        allCollections: { a1: {} },
+      });
+
+      const { getByText } = render(
+        <UserAlbumsModal visible={true} onClose={jest.fn()} userId="u1" />,
+      );
+      expect(getByText('Copa 2026')).toBeTruthy();
+      expect(() => getByText('Coleção sem nome')).toThrow();
+    });
+
+    it('renders both named and unnamed albums in list', () => {
+      useStickerStore.setState({
+        userAlbums: [
+          { id: 'a1', name: 'Copa 2026', user_id: 'u1', created_at: '2024-01-01' },
+          { id: 'a2', name: '', user_id: 'u1', created_at: '2024-02-01' },
+        ],
+        activeUserAlbumId: 'a1',
+        allCollections: { a1: {}, a2: {} },
+      });
+
+      const { getByText } = render(
+        <UserAlbumsModal visible={true} onClose={jest.fn()} userId="u1" />,
+      );
+      expect(getByText('Copa 2026')).toBeTruthy();
+      expect(getByText('Coleção sem nome')).toBeTruthy();
+    });
+
+    it('rename edit pre-fill still uses original empty name, not fallback', () => {
+      useStickerStore.setState({
+        userAlbums: [{ id: 'a1', name: '', user_id: 'u1', created_at: '2024-01-01' }],
+        activeUserAlbumId: 'a1',
+        allCollections: { a1: {} },
+      });
+
+      const { getByText, getByTestId } = render(
+        <UserAlbumsModal visible={true} onClose={jest.fn()} userId="u1" />,
+      );
+
+      fireEvent.press(getByText('✏️'));
+
+      const input = getByTestId('rename-input');
+      expect(input.props.value).toBe('');
+    });
+  });
+
   describe('album name pre-fill on edit (BUG-05)', () => {
     const secondAlbum = { id: 'a2', name: 'Copa 2026', user_id: 'u1', created_at: '2024-02-01' };
 

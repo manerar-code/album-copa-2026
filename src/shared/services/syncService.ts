@@ -12,9 +12,11 @@ function createSyncService(): SyncService {
   let unsubscribe: (() => void) | null = null;
   let pollingInterval: ReturnType<typeof setInterval> | null = null;
   let currentUserId: string | null = null;
+  let isFlushing = false;
 
   async function tryFlush(): Promise<void> {
-    if (!currentUserId) return;
+    if (!currentUserId || isFlushing) return;
+    isFlushing = true;
     const store = useSyncStore.getState();
     store.setStatus('syncing');
 
@@ -34,6 +36,8 @@ function createSyncService(): SyncService {
     } catch (error) {
       useSyncStore.getState().setStatus('pending');
       logger.warn('sync:flush:error', error);
+    } finally {
+      isFlushing = false;
     }
   }
 
@@ -52,7 +56,7 @@ function createSyncService(): SyncService {
 
   return {
     start(userId: string): void {
-      if (unsubscribe) {
+      if (unsubscribe || pollingInterval) {
         logger.warn('syncService.start called twice — ignoring');
         return;
       }

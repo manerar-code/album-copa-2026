@@ -5,9 +5,9 @@ export const logger = {
     if (isDev) console.log(...args); // eslint-disable-line no-console
   },
   warn: (...args: unknown[]) => {
-    console.warn(...args);
+    if (isDev) console.warn(...args);
   },
   error: (...args: unknown[]) => {
-    console.error(...args);
+    if (isDev) console.error(...args);
   },
 };

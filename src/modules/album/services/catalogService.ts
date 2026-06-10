@@ -17,8 +17,9 @@ export const catalogService = {
       const { data, error } = await supabase.from('albums').select('versao').single();
       if (error) throw error;
       return data?.versao ?? null;
-    } catch (error) {
-      throw handleError(error, 'catalogService.checkVersion');
+    } catch {
+      // Network unavailable — return null so CatalogProvider skips the update check
+      return null;
     }
   },
 
@@ -98,14 +99,24 @@ export const catalogService = {
   },
 
   async fetchAndCacheFullCatalog(): Promise<CatalogCache> {
-    const album = await this.getAlbum();
-    const [selecoes, figurinhas] = await Promise.all([
-      this.getTeams(album.id),
-      this.getStickers(album.id),
-    ]);
-    const cache: CatalogCache = { album, selecoes, figurinhas };
-    await this.saveCacheLocally(cache);
-    logger.log(`Catalog cached — version ${album.versao}`);
-    return cache;
+    try {
+      const album = await this.getAlbum();
+      const [selecoes, figurinhas] = await Promise.all([
+        this.getTeams(album.id),
+        this.getStickers(album.id),
+      ]);
+      const cache: CatalogCache = { album, selecoes, figurinhas };
+      await this.saveCacheLocally(cache);
+      logger.log(`Catalog cached — version ${album.versao}`);
+      return cache;
+    } catch (networkError) {
+      logger.warn('Network error fetching catalog — attempting local cache fallback', networkError);
+      const cached = await this.loadCacheLocally();
+      if (cached) {
+        logger.log(`Catalog loaded from local cache — version ${cached.album.versao}`);
+        return cached;
+      }
+      throw new Error('No catalog available', { cause: networkError });
+    }
   },
 };

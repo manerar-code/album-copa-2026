@@ -70,10 +70,21 @@ export const authService = {
   /** Verifica se tem sessão ativa e retorna o usuário */
   async getCurrentUser(): Promise<AppUser | null> {
     try {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-      if (!session) return null;
-      const u = session.user;
+      const { data, error } = await supabase.auth.getUser();
+      // 401 / AuthSessionMissingError → no active session, not an unexpected error
+      if (error) {
+        if (
+          error.status === 401 ||
+          error.name === 'AuthSessionMissingError' ||
+          error.message?.includes('Auth session missing')
+        ) {
+          return null;
+        }
+        logger.warn('Could not get current user:', error);
+        return null;
+      }
+      const u = data.user;
+      if (!u) return null;
       return {
         id: u.id,
         email: u.email ?? '',

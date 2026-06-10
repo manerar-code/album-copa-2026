@@ -1,0 +1,209 @@
+diff --git a/node_modules/expo-modules-core/ios/Core/AppContext.swift b/node_modules/expo-modules-core/ios/Core/AppContext.swift
+index 1daa2d7..7f3b2e3 100644
+--- a/node_modules/expo-modules-core/ios/Core/AppContext.swift
++++ b/node_modules/expo-modules-core/ios/Core/AppContext.swift
+@@ -44,7 +44,7 @@ public final class AppContext: NSObject, EXAppContextProtocol, @unchecked Sendab
+    The legacy module registry with modules written in the old-fashioned way.
+    */
+   @objc
+-  public weak var legacyModuleRegistry: EXModuleRegistry?
++  public nonisolated(unsafe) weak var legacyModuleRegistry: EXModuleRegistry?
+ 
+   /**
+    React bridge of the context's app. Can be `nil` when the bridge
+@@ -52,7 +52,7 @@ public final class AppContext: NSObject, EXAppContextProtocol, @unchecked Sendab
+    or when the app context is "bridgeless" (for example in native unit tests).
+    */
+   @objc
+-  internal weak var reactBridge: RCTBridge?
++  internal nonisolated(unsafe) weak var reactBridge: RCTBridge?
+ 
+   /**
+    RCTHost wrapper. This is set by ``ExpoReactNativeFactory`` in `didInitializeRuntime`.
+diff --git a/node_modules/expo-modules-core/ios/Core/Events/LegacyEventEmitterCompat.swift b/node_modules/expo-modules-core/ios/Core/Events/LegacyEventEmitterCompat.swift
+index 835545d..9d9de9c 100644
+--- a/node_modules/expo-modules-core/ios/Core/Events/LegacyEventEmitterCompat.swift
++++ b/node_modules/expo-modules-core/ios/Core/Events/LegacyEventEmitterCompat.swift
+@@ -2,7 +2,7 @@
+ 
+ @available(*, deprecated, message: "Use `sendEvent` directly on the module instance instead")
+ public final class LegacyEventEmitterCompat {
+-  internal weak var appContext: AppContext?
++  internal nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   init(appContext: AppContext) {
+     self.appContext = appContext
+diff --git a/node_modules/expo-modules-core/ios/Core/ModuleHolder.swift b/node_modules/expo-modules-core/ios/Core/ModuleHolder.swift
+index fb99066..6018d84 100644
+--- a/node_modules/expo-modules-core/ios/Core/ModuleHolder.swift
++++ b/node_modules/expo-modules-core/ios/Core/ModuleHolder.swift
+@@ -17,7 +17,7 @@ public final class ModuleHolder {
+   /**
+    A weak reference to the app context.
+    */
+-  private(set) weak var appContext: AppContext?
++  private(set) nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   /**
+    JavaScript object that represents the module instance in the runtime.
+diff --git a/node_modules/expo-modules-core/ios/Core/ModuleRegistry.swift b/node_modules/expo-modules-core/ios/Core/ModuleRegistry.swift
+index 6d772a8..1c5cda2 100644
+--- a/node_modules/expo-modules-core/ios/Core/ModuleRegistry.swift
++++ b/node_modules/expo-modules-core/ios/Core/ModuleRegistry.swift
+@@ -1,7 +1,7 @@
+ public final class ModuleRegistry: Sequence {
+   public typealias Element = ModuleHolder
+ 
+-  private weak var appContext: AppContext?
++  private nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   private let registry = Mutex<[String: ModuleHolder]>([:])
+   private var overrideDisallowModules = Set<String>()
+diff --git a/node_modules/expo-modules-core/ios/Core/Modules/JSLoggerModule.swift b/node_modules/expo-modules-core/ios/Core/Modules/JSLoggerModule.swift
+index e5b5f7f..ebe409d 100644
+--- a/node_modules/expo-modules-core/ios/Core/Modules/JSLoggerModule.swift
++++ b/node_modules/expo-modules-core/ios/Core/Modules/JSLoggerModule.swift
+@@ -10,7 +10,7 @@ public final class JSLoggerModule: Module {
+   // We could have made the JSLoggerModule implement the LogHandler interface, but the Logger
+   // holds a strong reference to the LogHandlers, which would lead to a reference cycle.
+   private class JSLogHandler: LogHandler {
+-    weak var module: JSLoggerModule?
++    nonisolated(unsafe) weak var module: JSLoggerModule?
+ 
+     init(module: JSLoggerModule) {
+       self.module = module
+diff --git a/node_modules/expo-modules-core/ios/Core/Modules/Module.swift b/node_modules/expo-modules-core/ios/Core/Modules/Module.swift
+index b92e43a..2dbd658 100644
+--- a/node_modules/expo-modules-core/ios/Core/Modules/Module.swift
++++ b/node_modules/expo-modules-core/ios/Core/Modules/Module.swift
+@@ -6,7 +6,7 @@
+  other modules to use `override` keyword in the function returning the definition.
+  */
+ open class BaseModule {
+-  public private(set) weak var appContext: AppContext?
++  public private(set) nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   @available(*, unavailable, message: "Module's initializer cannot be overriden, use \"onCreate\" definition component instead.")
+   public init() {}
+diff --git a/node_modules/expo-modules-core/ios/Core/Promise.swift b/node_modules/expo-modules-core/ios/Core/Promise.swift
+index 56e0489..72f3ab9 100644
+--- a/node_modules/expo-modules-core/ios/Core/Promise.swift
++++ b/node_modules/expo-modules-core/ios/Core/Promise.swift
+@@ -6,7 +6,7 @@ public struct Promise: AnyArgument, Sendable {
+   public typealias ResolveClosure = @Sendable (_ value: JavaScriptValue) -> Void
+   public typealias RejectClosure = @Sendable (Exception) -> Void
+ 
+-  internal weak var appContext: AppContext?
++  internal nonisolated(unsafe) weak var appContext: AppContext?
+   public var resolver: ResolveClosure
+   public var rejecter: RejectClosure
+ 
+diff --git a/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObject.swift b/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObject.swift
+index ec2427c..5a0cc2b 100644
+--- a/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObject.swift
++++ b/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObject.swift
+@@ -22,7 +22,7 @@ open class SharedObject: AnySharedObject {
+   /**
+    An app context for which the shared object was created.
+    */
+-  public internal(set) weak var appContext: AppContext?
++  public internal(set) nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   /**
+    The default public initializer of the shared object.
+diff --git a/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObjectRegistry.swift b/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObjectRegistry.swift
+index bb2bdcd..acafea7 100644
+--- a/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObjectRegistry.swift
++++ b/node_modules/expo-modules-core/ios/Core/SharedObjects/SharedObjectRegistry.swift
+@@ -34,7 +34,7 @@ public final class SharedObjectRegistry: Sendable {
+   /**
+    Weak reference to the app context for the registry.
+    */
+-  private weak let appContext: AppContext?
++  private nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   internal struct State: Sendable {
+     /**
+diff --git a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIViewProps.swift b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIViewProps.swift
+index b133ea4..c2bed6e 100644
+--- a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIViewProps.swift
++++ b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIViewProps.swift
+@@ -39,7 +39,7 @@ extension ExpoSwiftUI {
+      */
+     public internal(set) var shadowNodeProxy: ShadowNodeProxy = ShadowNodeProxy()
+ 
+-    public internal(set) weak var appContext: AppContext?
++    public internal(set) nonisolated(unsafe) weak var appContext: AppContext?
+ 
+     /**
+      A global event dispatcher that allows views to call `view.dispatchEvent(_:payload)` directly
+diff --git a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
+index c5dfc8d..4e5c4e6 100644
+--- a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
++++ b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
+@@ -16,7 +16,7 @@ extension ExpoSwiftUI {
+     /**
+      A weak reference to the app context associated with this view.
+      */
+-    weak var appContext: AppContext?
++    nonisolated(unsafe) weak var appContext: AppContext?
+ 
+     /**
+      The view definition that setup from `ExpoFabricView.create()`.
+@@ -172,7 +172,7 @@ extension ExpoSwiftUI {
+     /**
+      A weak reference to the app context associated with this view.
+      */
+-    weak var appContext: AppContext?
++    nonisolated(unsafe) weak var appContext: AppContext?
+ 
+     /**
+      The view definition that setup from `ExpoFabricView.create()`.
+diff --git a/node_modules/expo-modules-core/ios/Core/Views/ViewModuleWrapper.swift b/node_modules/expo-modules-core/ios/Core/Views/ViewModuleWrapper.swift
+index 2bb3f03..4eadfc8 100644
+--- a/node_modules/expo-modules-core/ios/Core/Views/ViewModuleWrapper.swift
++++ b/node_modules/expo-modules-core/ios/Core/Views/ViewModuleWrapper.swift
+@@ -24,7 +24,7 @@ public final class ViewModuleWrapper: NSObject, DynamicModuleWrapperProtocol {
+   /**
+    A reference to the module holder that stores the module definition.
+    */
+-  weak var moduleHolder: ModuleHolder?
++  nonisolated(unsafe) weak var moduleHolder: ModuleHolder?
+   /**
+    A reference to the module definition
+    */
+diff --git a/node_modules/expo-modules-core/ios/DevTools/ExpoRequestCdpInterceptor.swift b/node_modules/expo-modules-core/ios/DevTools/ExpoRequestCdpInterceptor.swift
+index 0b51cec..82cd440 100644
+--- a/node_modules/expo-modules-core/ios/DevTools/ExpoRequestCdpInterceptor.swift
++++ b/node_modules/expo-modules-core/ios/DevTools/ExpoRequestCdpInterceptor.swift
+@@ -8,7 +8,7 @@ import Foundation
+  */
+ @objc(EXRequestCdpInterceptor)
+ public final class ExpoRequestCdpInterceptor: NSObject, ExpoRequestInterceptorProtocolDelegate, @unchecked Sendable {
+-  private weak var delegate: ExpoRequestCdpInterceptorDelegate?
++  private nonisolated(unsafe) weak var delegate: ExpoRequestCdpInterceptorDelegate?
+   public var dispatchQueue = DispatchQueue(label: "expo.requestCdpInterceptor")
+ 
+   override private init() {}
+diff --git a/node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift b/node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift
+index 5b15751..b3d27d9 100644
+--- a/node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift
++++ b/node_modules/expo-modules-core/ios/Fabric/ExpoFabricView.swift
+@@ -11,7 +11,7 @@ open class ExpoFabricView: ExpoFabricViewObjC, AnyExpoView {
+    The app context is injected into the class after the context is initialized.
+    see the `makeClass` static function.
+    */
+-  public weak var appContext: AppContext?
++  public nonisolated(unsafe) weak var appContext: AppContext?
+ 
+   /**
+    The view definition that setup from `ExpoFabricView.create()`.
+@@ -199,7 +199,7 @@ open class ExpoFabricView: ExpoFabricViewObjC, AnyExpoView {
+ 
+   internal static func inject(appContext: AppContext) {
+     // Keep it weak so we don't leak the app context. We use `var` because `let` is only supported in Swift 6.0+
+-    weak var weakAppContext = appContext
++    nonisolated(unsafe) weak var weakAppContext = appContext
+     let appContextBlock: @convention(block) () -> AppContext? = { weakAppContext }
+     let appContextBlockImp: IMP = imp_implementationWithBlock(appContextBlock)
+     class_replaceMethod(object_getClass(ExpoFabricView.self), #selector(appContextFromClass), appContextBlockImp, "@@:")

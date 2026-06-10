@@ -97,6 +97,38 @@ describe('TypeSettingsModal', () => {
     expect(queryByTestId('checkbox-Silver')).toBeNull();
   });
 
+  it('excludes lowercase "foil" from configurable types (case-insensitive dedup)', () => {
+    useStickerStore.setState({
+      figurinhas: [buildFigurinha('Player'), buildFigurinha('foil')],
+    });
+    const { queryByTestId } = render(<TypeSettingsModal visible={true} onClose={jest.fn()} />);
+    expect(queryByTestId('checkbox-foil')).toBeNull();
+    expect(queryByTestId('checkbox-Player')).toBeTruthy();
+  });
+
+  it('excludes lowercase "silver" from configurable types (case-insensitive dedup)', () => {
+    useStickerStore.setState({
+      figurinhas: [buildFigurinha('Player'), buildFigurinha('silver')],
+    });
+    const { queryByTestId } = render(<TypeSettingsModal visible={true} onClose={jest.fn()} />);
+    expect(queryByTestId('checkbox-silver')).toBeNull();
+    expect(queryByTestId('checkbox-Player')).toBeTruthy();
+  });
+
+  it('shows no duplicate entries when figurinhas contain both "Foil Player" and "foil"', () => {
+    useStickerStore.setState({
+      figurinhas: [buildFigurinha('Foil Player'), buildFigurinha('foil'), buildFigurinha('Player')],
+    });
+    const { getByTestId, queryByTestId } = render(
+      <TypeSettingsModal visible={true} onClose={jest.fn()} />,
+    );
+    expect(getByTestId('locked-Foil Player')).toBeTruthy();
+    expect(queryByTestId('checkbox-foil')).toBeNull();
+    expect(queryByTestId('checkbox-Foil Player')).toBeNull();
+    const lockedRendered = getByTestId('locked-Foil Player');
+    expect(within(lockedRendered).getByText('Brilhante')).toBeTruthy();
+  });
+
   it('renders checked checkbox with checkmark and unchecked without checkmark', () => {
     useStickerStore.setState({
       figurinhas: [buildFigurinha('Player'), buildFigurinha('Shiny')],

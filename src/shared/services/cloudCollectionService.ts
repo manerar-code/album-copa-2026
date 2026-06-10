@@ -20,7 +20,12 @@ export const cloudCollectionService = {
     }
   },
 
-  async upsertOne(userAlbumId: string, figurinhaId: string, status: StickerStatus, userId: string): Promise<void> {
+  async upsertOne(
+    userAlbumId: string,
+    figurinhaId: string,
+    status: StickerStatus,
+    userId: string,
+  ): Promise<void> {
     try {
       if (status === 'missing') {
         await supabase
@@ -29,18 +34,16 @@ export const cloudCollectionService = {
           .eq('user_album_id', userAlbumId)
           .eq('figurinha_id', figurinhaId);
       } else {
-        const { error } = await supabase
-          .from('user_collections')
-          .upsert(
-            {
-              user_id: userId,
-              user_album_id: userAlbumId,
-              figurinha_id: figurinhaId,
-              status,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'user_album_id,figurinha_id' },
-          );
+        const { error } = await supabase.from('user_collections').upsert(
+          {
+            user_id: userId,
+            user_album_id: userAlbumId,
+            figurinha_id: figurinhaId,
+            status,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_album_id,figurinha_id' },
+        );
         if (error) throw error;
       }
     } catch (error) {
@@ -61,7 +64,8 @@ export const cloudCollectionService = {
           updated_at: new Date().toISOString(),
         }));
       if (rows.length > 0) {
-        await supabase.from('user_collections').insert(rows);
+        const { error: insertError } = await supabase.from('user_collections').insert(rows);
+        if (insertError) throw insertError;
       }
     } catch (error) {
       throw handleError(error, 'cloudCollectionService.replaceAll');

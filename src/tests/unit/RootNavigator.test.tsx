@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { KeyboardAvoidingView } from 'react-native';
-import { RootNavigator } from '@core/navigation/RootNavigator';
+import { RootNavigator, tabIcons } from '@core/navigation/RootNavigator';
 
 jest.mock('@react-navigation/native', () => ({
   NavigationContainer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -290,6 +290,28 @@ describe('RootNavigator', () => {
 
       expect(saveButton).toBeTruthy();
       expect(editRow).toHaveStyle({ width: '100%' });
+    });
+  });
+
+  describe('tabIcons', () => {
+    it('Missing tab uses magnifying glass', () => {
+      expect(tabIcons['Missing']).toBe('🔍');
+    });
+
+    it('Home tab uses house emoji (unchanged)', () => {
+      expect(tabIcons['Home']).toBe('🏠');
+    });
+
+    it('Album tab uses book emoji (unchanged)', () => {
+      expect(tabIcons['Album']).toBe('📖');
+    });
+
+    it('Duplicates tab uses cycle emoji (unchanged)', () => {
+      expect(tabIcons['Duplicates']).toBe('🔄');
+    });
+
+    it('Stats tab uses chart emoji (unchanged)', () => {
+      expect(tabIcons['Stats']).toBe('📊');
     });
   });
 });
