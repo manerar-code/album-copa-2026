@@ -6,7 +6,15 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase env vars not set. Check .env file.');
+  if (process.env.NODE_ENV !== 'production') {
+    throw new Error(
+      'Missing Supabase env vars. Check your .env file or run:\n' +
+        '  eas secret:pull --env-file .env',
+    );
+  }
+  console.warn(
+    '[supabase] Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY — app will not connect to Supabase.',
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
