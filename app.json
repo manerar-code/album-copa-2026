@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.manera.albumcopa2026",
       "buildNumber": "22",
-      "deploymentTarget": "16.4",
+      "deploymentTarget": "17.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -19,6 +19,8 @@
     "android": {
       "package": "com.manera.albumcopa2026",
       "versionCode": 1,
+      "minSdkVersion": 34,
+      "targetSdkVersion": 35,
       "permissions": [
         "INTERNET"
       ],

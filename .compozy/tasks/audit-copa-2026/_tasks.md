@@ -5,7 +5,7 @@
 | # | Title | Status | Complexity | Dependencies |
 |---|-------|--------|------------|--------------|
 | 01 | F1 — EAS secrets: remover credenciais do eas.json | completed | medium | — |
-| 02 | F3 — Build config: deploymentTarget, minSdk, targetSdk | pending | low | — |
+| 02 | F3 — Build config: deploymentTarget, minSdk, targetSdk | completed | low | — |
 | 03 | F2 — RLS policies em user_collections e user_albums | pending | medium | task_01 |
 | 04 | F6 — Login error feedback no LoginScreen | pending | low | — |
 | 05 | F4a — PrivacyPolicyModal + link no LoginScreen | pending | low | task_04 |
