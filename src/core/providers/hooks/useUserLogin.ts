@@ -34,6 +34,7 @@ export function useUserLogin() {
 
       const activeAlbum = albums[0];
       store.setActiveUserAlbum(activeAlbum.id);
+      await store.loadCollection(activeAlbum.id);
 
       const allEntries = await Promise.all(
         albums.map(async a => {

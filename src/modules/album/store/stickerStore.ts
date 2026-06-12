@@ -42,7 +42,7 @@ interface CatalogState {
   setUserAlbums: (albums: UserAlbum[]) => void;
   setActiveUserAlbum: (userAlbumId: string | null) => void;
   setAllCollections: (all: Record<string, UserCollection>) => void;
-  loadCollection: () => Promise<void>;
+  loadCollection: (userAlbumId: string) => Promise<void>;
   loadCloudCollection: (userAlbumId: string) => Promise<UserCollection>;
   applyCollection: (collection: UserCollection) => Promise<void>;
   toggleSticker: (figurinhaId: string) => Promise<void>;
@@ -81,9 +81,9 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
   setActiveUserAlbum: activeUserAlbumId => set({ activeUserAlbumId }),
   setAllCollections: allCollections => set({ allCollections }),
 
-  loadCollection: async () => {
+  loadCollection: async (userAlbumId: string) => {
     try {
-      const collection = await collectionService.load();
+      const collection = await collectionService.load(userAlbumId);
       set({ collection });
       logger.log('Collection loaded from storage');
     } catch (error) {
@@ -103,7 +103,9 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
         ? { ...allCollections, [activeUserAlbumId]: collection }
         : allCollections,
     });
-    await collectionService.save(collection);
+    if (activeUserAlbumId) {
+      await collectionService.save(collection, activeUserAlbumId);
+    }
   },
 
   toggleSticker: async (figurinhaId: string) => {
@@ -121,7 +123,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
 
     // 1. Salva localmente (AsyncStorage/localStorage). Só reverte se isto falhar.
     try {
-      await collectionService.save(updated);
+      if (activeUserAlbumId) await collectionService.save(updated, activeUserAlbumId);
     } catch (saveError) {
       logger.error('toggleSticker: local save failed — reverting', saveError);
       set({ collection: previousCollection });
@@ -178,7 +180,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
           : allCollections,
       });
       try {
-        await collectionService.save(updated);
+        if (activeUserAlbumId) await collectionService.save(updated, activeUserAlbumId);
         if (activeUserAlbumId && syncUserId) {
           await cloudCollectionService.upsertOne(
             activeUserAlbumId,
@@ -206,7 +208,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
         : allCollections,
     });
     try {
-      await collectionService.reset();
+      if (activeUserAlbumId) await collectionService.reset(activeUserAlbumId);
       if (activeUserAlbumId && syncUserId) {
         await cloudCollectionService.replaceAll(activeUserAlbumId, {}, syncUserId);
       }

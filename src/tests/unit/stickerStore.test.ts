@@ -189,7 +189,7 @@ describe('stickerStore', () => {
     mockLoad.mockResolvedValue({ '002': 'owned', '003': 'duplicate' });
     const { result } = renderHook(() => useStickerStore());
     await act(async () => {
-      await result.current.loadCollection();
+      await result.current.loadCollection('album_1');
     });
     expect(result.current.getStatus('002')).toBe('owned');
     expect(result.current.getStatus('003')).toBe('duplicate');

@@ -70,15 +70,15 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   );
 
   const handleSignOut = useCallback(() => {
+    const s = useStickerStore.getState();
+    s.applyCollection({});
     syncService.stop();
     offlineQueueService.clear();
     useAuthStore.getState().setUser(null);
-    const s = useStickerStore.getState();
     s.setSyncUserId(null);
     s.setUserAlbums([]);
-    s.setActiveUserAlbum('');
+    s.setActiveUserAlbum(null);
     s.setAllCollections({});
-    s.applyCollection({});
   }, []);
 
   useAuthListener(handleSignIn, handleSignOut, bootstrapSyncedUserId);

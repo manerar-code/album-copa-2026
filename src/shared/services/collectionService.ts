@@ -1,29 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@shared/storage/keys';
 import { handleError } from '@shared/services/errorHandler';
 import type { UserCollection } from '@shared/types';
 
+// Scoped per album so different accounts on the same device never share data.
+const collectionKey = (userAlbumId: string) => `user_collection_${userAlbumId}`;
+
 export const collectionService = {
-  async save(collection: UserCollection): Promise<void> {
+  async save(collection: UserCollection, userAlbumId: string): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_COLLECTION, JSON.stringify(collection));
+      await AsyncStorage.setItem(collectionKey(userAlbumId), JSON.stringify(collection));
     } catch (error) {
       throw handleError(error, 'collectionService.save');
     }
   },
 
-  async load(): Promise<UserCollection> {
+  async load(userAlbumId: string): Promise<UserCollection> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER_COLLECTION);
+      const raw = await AsyncStorage.getItem(collectionKey(userAlbumId));
       return raw ? (JSON.parse(raw) as UserCollection) : {};
     } catch (error) {
       throw handleError(error, 'collectionService.load');
     }
   },
 
-  async reset(): Promise<void> {
+  async reset(userAlbumId: string): Promise<void> {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_COLLECTION);
+      await AsyncStorage.removeItem(collectionKey(userAlbumId));
     } catch (error) {
       throw handleError(error, 'collectionService.reset');
     }

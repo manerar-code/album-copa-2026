@@ -11,28 +11,28 @@ beforeEach(() => jest.clearAllMocks());
 describe('collectionService', () => {
   it('save serializes and stores collection', async () => {
     mockSetItem.mockResolvedValue(undefined);
-    await collectionService.save({ '001': 'owned', '002': 'missing' });
+    await collectionService.save({ '001': 'owned', '002': 'missing' }, 'album_1');
     expect(mockSetItem).toHaveBeenCalledWith(
-      'user_collection',
+      'user_collection_album_1',
       JSON.stringify({ '001': 'owned', '002': 'missing' }),
     );
   });
 
   it('load returns parsed collection', async () => {
     mockGetItem.mockResolvedValue(JSON.stringify({ '001': 'owned' }));
-    const result = await collectionService.load();
+    const result = await collectionService.load('album_1');
     expect(result).toEqual({ '001': 'owned' });
   });
 
   it('load returns empty object when nothing stored', async () => {
     mockGetItem.mockResolvedValue(null);
-    const result = await collectionService.load();
+    const result = await collectionService.load('album_1');
     expect(result).toEqual({});
   });
 
   it('reset removes key from storage', async () => {
     mockRemoveItem.mockResolvedValue(undefined);
-    await collectionService.reset();
-    expect(mockRemoveItem).toHaveBeenCalledWith('user_collection');
+    await collectionService.reset('album_1');
+    expect(mockRemoveItem).toHaveBeenCalledWith('user_collection_album_1');
   });
 });

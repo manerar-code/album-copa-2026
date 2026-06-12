@@ -47,7 +47,6 @@ export function useCatalogLoad(bootstrapComplete: boolean): {
 
       if (cancelled) return;
 
-      await store.loadCollection();
       const currentStore = useStickerStore.getState();
       const allTypes = Array.from(
         new Set(currentStore.figurinhas.map(f => f.type).filter(Boolean)),
