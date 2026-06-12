@@ -38,14 +38,16 @@ export function StatsScreen() {
   const teamStats = useMemo(() => {
     return selecoes
       .map(s => {
-        const stickers = figurinhas.filter(f => f.selecao_id === s.id);
+        const stickers = figurinhas.filter(
+          f => f.selecao_id === s.id && isTypeTracked(trackedTypes, f.type),
+        );
         const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
         const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
         const pct = stickers.length > 0 ? owned / stickers.length : 0;
         return { ...s, total: stickers.length, owned, dup, pct };
       })
       .sort((a, b) => b.pct - a.pct);
-  }, [figurinhas, selecoes, collection]);
+  }, [figurinhas, selecoes, collection, trackedTypes]);
 
   if (!isInitialized) return <StatsSkeleton />;
 
