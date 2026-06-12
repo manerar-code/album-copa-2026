@@ -6,6 +6,7 @@ import { BrandMedallion, Wordmark } from '@shared/components/BrandMedallion';
 import { GlassCard } from '@shared/components/GlassCard';
 import { GoldButton } from '@shared/components/GoldButton';
 import { colors, fonts, spacing, gradients } from '@core/theme';
+import { PrivacyPolicyModal } from '@modules/auth/components/PrivacyPolicyModal';
 
 const FEATURES: [string, string][] = [
   ['☁️', 'Coleção salva na nuvem'],
@@ -21,20 +22,28 @@ const CONFETTI: [string, number, number, number, boolean][] = [
   ['#E7B43C', 285, 200, 60, true],
 ];
 
-interface LoginScreenProps {
-  onLoginSuccess: () => void;
-}
-
-export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+export function LoginScreen() {
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [privacyVisible, setPrivacyVisible] = useState(false);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    setLoginError(null);
     try {
       await authService.signInWithGoogle();
-      onLoginSuccess();
-    } catch {
-      // silently fail — user stays on login screen
+    } catch (e: unknown) {
+      const isNetworkError =
+        e instanceof Error && (e.message.includes('NetworkError') || e.message.includes('fetch'));
+      const isCancelled = e instanceof Error && e.message.includes('cancelled');
+      if (!isCancelled) {
+        setLoginError(
+          isNetworkError
+            ? 'Sem conexão. Verifique sua internet e tente novamente.'
+            : 'Não foi possível fazer login. Tente novamente.',
+        );
+        setTimeout(() => setLoginError(null), 6000);
+      }
     } finally {
       setLoading(false);
     }
@@ -102,10 +111,22 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           />
         </TouchableOpacity>
 
+        {loginError && (
+          <Text style={s.errorText} testID="login-error">
+            {loginError}
+          </Text>
+        )}
+
         <Text style={s.legal}>
           🔒 Seus dados são privados e seguros.{'\n'}Apenas você acessa sua coleção.
         </Text>
+
+        <TouchableOpacity onPress={() => setPrivacyVisible(true)} testID="privacy-policy-link">
+          <Text style={s.privacyLink}>Política de Privacidade</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <PrivacyPolicyModal visible={privacyVisible} onClose={() => setPrivacyVisible(false)} />
     </LinearGradient>
   );
 }
@@ -181,12 +202,27 @@ const s = StyleSheet.create({
   spacer: { flex: 1, minHeight: 24 },
   googleBtnWrapper: { marginBottom: 16 },
   fullWidth: { width: '100%' },
+  errorText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.red,
+    textAlign: 'center',
+    marginBottom: 16,
+    marginTop: -8,
+  },
   legal: {
     fontFamily: fonts.body,
     textAlign: 'center',
     fontSize: 11.5,
     color: colors.txFaint,
     lineHeight: 18,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  privacyLink: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.gold,
+    textAlign: 'center',
+    paddingBottom: spacing.lg,
   },
 });
