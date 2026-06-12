@@ -22,7 +22,7 @@ interface StickerCardProps {
   width?: number;
 }
 
-export function StickerCard({
+export const StickerCard = React.memo(function StickerCard({
   figurinhaId,
   numero,
   descricao,
@@ -120,7 +120,8 @@ export function StickerCard({
   }
 
   return card;
-}
+});
+StickerCard.displayName = 'StickerCard';
 
 const styles = StyleSheet.create({
   highlightBorder: {

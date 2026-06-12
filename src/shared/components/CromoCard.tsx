@@ -24,7 +24,7 @@ export interface CromoCardProps {
 
 const W_DEFAULT = 72;
 
-export function CromoCard({
+export const CromoCard = React.memo(function CromoCard({
   numero,
   descricao,
   pos = '',
@@ -166,7 +166,8 @@ export function CromoCard({
     );
   }
   return cardContent;
-}
+});
+CromoCard.displayName = 'CromoCard';
 
 const s = StyleSheet.create({
   outerDup: {

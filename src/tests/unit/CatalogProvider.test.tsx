@@ -77,6 +77,12 @@ jest.mock('@shared/services/syncService', () => ({
   },
 }));
 
+jest.mock('@modules/auth/services/accountDeletionService', () => ({
+  accountDeletionService: {
+    getPendingRequest: jest.fn().mockResolvedValue(null),
+  },
+}));
+
 jest.mock('@shared/services/collectionService', () => ({
   collectionService: {
     load: jest.fn().mockResolvedValue({}),
@@ -85,12 +91,16 @@ jest.mock('@shared/services/collectionService', () => ({
   },
 }));
 
-const mockOfflineQueueInit = require('@shared/services/offlineQueueService').offlineQueueService.init as jest.Mock;
+const mockOfflineQueueInit = require('@shared/services/offlineQueueService').offlineQueueService
+  .init as jest.Mock;
 const mockSyncStart = require('@shared/services/syncService').syncService.start as jest.Mock;
 const mockSyncStop = require('@shared/services/syncService').syncService.stop as jest.Mock;
-const mockOfflineQueueClear = require('@shared/services/offlineQueueService').offlineQueueService.clear as jest.Mock;
-const mockGetCurrentUser = require('@modules/auth/services/authService').authService.getCurrentUser as jest.Mock;
-const mockUserAlbumList = require('@shared/services/userAlbumService').userAlbumService.list as jest.Mock;
+const mockOfflineQueueClear = require('@shared/services/offlineQueueService').offlineQueueService
+  .clear as jest.Mock;
+const mockGetCurrentUser = require('@modules/auth/services/authService').authService
+  .getCurrentUser as jest.Mock;
+const mockUserAlbumList = require('@shared/services/userAlbumService').userAlbumService
+  .list as jest.Mock;
 
 function TestChild() {
   return <Text>test child</Text>;
