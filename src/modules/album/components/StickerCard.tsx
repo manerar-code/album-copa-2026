@@ -32,18 +32,18 @@ export const StickerCard = React.memo(function StickerCard({
   pos,
   width,
 }: StickerCardProps) {
-  const { toggleSticker, getStatus, getCrossAlbumDuplicateSources, setStatus, userAlbums } =
-    useStickerStore(
-      useShallow(s => ({
-        toggleSticker: s.toggleSticker,
-        getStatus: s.getStatus,
-        getCrossAlbumDuplicateSources: s.getCrossAlbumDuplicateSources,
-        setStatus: s.setStatus,
-        userAlbums: s.userAlbums,
-      })),
-    );
+  const { toggleSticker, getCrossAlbumDuplicateSources, setStatus, userAlbums } = useStickerStore(
+    useShallow(s => ({
+      toggleSticker: s.toggleSticker,
+      getCrossAlbumDuplicateSources: s.getCrossAlbumDuplicateSources,
+      setStatus: s.setStatus,
+      userAlbums: s.userAlbums,
+    })),
+  );
 
-  const status = getStatus(figurinhaId);
+  // Direct subscription to collection[figurinhaId] so the card re-renders on every status change.
+  // Using getStatus (a stable fn ref) inside useShallow would NOT trigger re-renders.
+  const status = useStickerStore(s => s.collection[figurinhaId] ?? 'missing');
   const crossAlbumSources = getCrossAlbumDuplicateSources(figurinhaId);
   const isCrossAlbumHighlighted = status === 'missing' && crossAlbumSources.length > 0;
   const flag = codigoFifa ? (teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴') : '🏴';

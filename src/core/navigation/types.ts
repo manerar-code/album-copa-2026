@@ -1,10 +1,10 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps as StackScreenProps } from '@react-navigation/native-stack';
-import type { CompositeScreenProps } from '@react-navigation/native';
+import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 
 export type BottomTabParamList = {
   Home: undefined;
-  Album: undefined;
+  Album: NavigatorScreenParams<AlbumStackParamList> | undefined;
   Missing: undefined;
   Duplicates: undefined;
   Stats: undefined;

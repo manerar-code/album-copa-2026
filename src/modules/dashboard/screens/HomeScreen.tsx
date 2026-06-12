@@ -150,7 +150,12 @@ export function HomeScreen() {
                 <TouchableOpacity
                   key={team.id}
                   style={s.teamRow}
-                  onPress={() => navigation.navigate('Album')}
+                  onPress={() =>
+                    navigation.navigate('Album', {
+                      screen: 'TeamDetail',
+                      params: { selecaoId: team.id, selecaoNome: team.nome },
+                    })
+                  }
                   activeOpacity={0.7}
                 >
                   <FlagImage
