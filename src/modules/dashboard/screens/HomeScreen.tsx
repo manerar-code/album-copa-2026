@@ -72,7 +72,8 @@ export function HomeScreen() {
       if (status === 'owned') owned++;
       else if (status === 'duplicate') duplicate++;
     }
-    return { total, owned, duplicate, missing: total - owned - duplicate };
+    const possessed = owned + duplicate;
+    return { total, owned: possessed, duplicate, missing: total - possessed };
   }, [trackedFigurinhas, collection]);
 
   const pct = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
@@ -81,7 +82,7 @@ export function HomeScreen() {
     return selecoes
       .map(s => {
         const stickers = trackedFigurinhas.filter(f => f.selecao_id === s.id);
-        const owned = stickers.filter(f => (collection[f.id] ?? 'missing') === 'owned').length;
+        const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
         const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
         return { ...s, total: stickers.length, owned, dup };
       })

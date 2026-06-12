@@ -232,7 +232,8 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
       if (status === 'owned') owned++;
       else if (status === 'duplicate') duplicate++;
     }
-    return { total, owned, duplicate, missing: total - owned - duplicate };
+    const possessed = owned + duplicate;
+    return { total, owned: possessed, duplicate, missing: total - possessed };
   },
 
   getTradeSource: (figurinhaId: string): string | null => {
