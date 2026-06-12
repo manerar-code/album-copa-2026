@@ -81,7 +81,7 @@ export function HomeScreen() {
     return selecoes
       .map(s => {
         const stickers = trackedFigurinhas.filter(f => f.selecao_id === s.id);
-        const owned = stickers.filter(f => (collection[f.id] ?? 'missing') !== 'missing').length;
+        const owned = stickers.filter(f => (collection[f.id] ?? 'missing') === 'owned').length;
         const dup = stickers.filter(f => (collection[f.id] ?? 'missing') === 'duplicate').length;
         return { ...s, total: stickers.length, owned, dup };
       })

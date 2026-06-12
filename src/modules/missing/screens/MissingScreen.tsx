@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, SectionList, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { useUserSettingsStore, isTypeTracked } from '@shared/store/userSettingsStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
@@ -26,7 +26,7 @@ export function MissingScreen() {
         const missing = figurinhas.filter(f => {
           const isMissing = (collection[f.id] ?? 'missing') === 'missing';
           const matchesSelecao = f.selecao_id === selecao.id;
-          const matchesType = !trackedTypes || !f.type || trackedTypes.includes(f.type);
+          const matchesType = isTypeTracked(trackedTypes, f.type);
           const matchesQuery =
             !q ||
             f.numero.toLowerCase().includes(q) ||

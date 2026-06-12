@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, SectionList, StyleSheet, SafeAreaView } from 'react-native';
 
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore, displayType } from '@shared/store/userSettingsStore';
+import { useUserSettingsStore, displayType, isTypeTracked } from '@shared/store/userSettingsStore';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { GlassCard } from '@shared/components/GlassCard';
 import { ProgressBar } from '@shared/components/ProgressBar';
@@ -17,7 +17,7 @@ export function StatsScreen() {
   const typeStats = useMemo(() => {
     const map = new Map<string, { total: number; owned: number; duplicate: number }>();
     for (const f of figurinhas) {
-      if (trackedTypes && f.type && !trackedTypes.includes(f.type)) continue;
+      if (!isTypeTracked(trackedTypes, f.type)) continue;
       const t = displayType(f.type) || 'Sem tipo';
       const status = collection[f.id] ?? 'missing';
       const e = map.get(t) ?? { total: 0, owned: 0, duplicate: 0 };

@@ -9,7 +9,7 @@ import {
   Share,
 } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
-import { useUserSettingsStore } from '@shared/store/userSettingsStore';
+import { useUserSettingsStore, isTypeTracked } from '@shared/store/userSettingsStore';
 import { SearchInput } from '@shared/components/SearchInput';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
@@ -39,7 +39,7 @@ export function DuplicatesScreen() {
         const duplicates = figurinhas.filter(f => {
           const isDuplicate = (collection[f.id] ?? 'missing') === 'duplicate';
           const matchesSelecao = f.selecao_id === selecao.id;
-          const matchesType = !trackedTypes || !f.type || trackedTypes.includes(f.type);
+          const matchesType = isTypeTracked(trackedTypes, f.type);
           const matchesQuery =
             !q ||
             f.numero.toLowerCase().includes(q) ||
