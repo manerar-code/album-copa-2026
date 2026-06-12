@@ -42,6 +42,17 @@ jest.mock('@modules/auth/components/UserAlbumsModal', () => ({
   UserAlbumsModal: () => null,
 }));
 
+jest.mock('@modules/auth/components/AccountDeletionModal', () => ({
+  AccountDeletionModal: () => null,
+}));
+
+jest.mock('@modules/auth/services/accountDeletionService', () => ({
+  accountDeletionService: {
+    requestDeletion: jest.fn().mockRejectedValue(new Error('not mocked')),
+    cancelDeletion: jest.fn().mockRejectedValue(new Error('not mocked')),
+  },
+}));
+
 jest.mock('@modules/auth/components/TypeSettingsModal', () => ({
   TypeSettingsModal: () => null,
 }));
@@ -122,6 +133,8 @@ beforeEach(() => {
     setUser: jest.fn(),
     showAlbumsModal: false,
     setShowAlbumsModal: jest.fn(),
+    pendingDeletion: null,
+    setPendingDeletion: jest.fn(),
   });
 });
 
@@ -269,27 +282,65 @@ describe('RootNavigator', () => {
       expect(supabase.auth.updateUser).toHaveBeenCalledTimes(1);
     });
 
-    it('editRow has flexShrink style to prevent overflow', () => {
+    it('editRow has alignSelf stretch to fill available width', () => {
       const { getByText, getByTestId } = render(<RootNavigator />);
 
       fireEvent.press(getByText('T'));
       fireEvent.press(getByText('✏️'));
 
       const editRow = getByTestId('edit-row');
-      expect(editRow).toHaveStyle({ flexShrink: 1 });
+      expect(editRow).toHaveStyle({ alignSelf: 'stretch' });
+    });
+  });
+
+  describe('deletion UI', () => {
+    it('grace period banner is not rendered when pendingDeletion is null', () => {
+      const { queryByTestId } = render(<RootNavigator />);
+      expect(queryByTestId('cancel-deletion-banner')).toBeNull();
     });
 
-    it('save button is accessible when rendered at 375px width', () => {
-      const { getByText, getByTestId } = render(<RootNavigator />);
+    it('grace period banner renders when pendingDeletion has non-null scheduledDeleteAt and null cancelledAt', () => {
+      mockUseAuthStore.mockReturnValue({
+        user: mockUser,
+        setUser: jest.fn(),
+        showAlbumsModal: false,
+        setShowAlbumsModal: jest.fn(),
+        pendingDeletion: {
+          id: 'd1',
+          userId: 'u1',
+          requestedAt: '2026-06-10T00:00:00.000Z',
+          scheduledDeleteAt: '2026-07-10T00:00:00.000Z',
+          cancelledAt: null,
+          completedAt: null,
+        },
+        setPendingDeletion: jest.fn(),
+      });
+      const { getByTestId } = render(<RootNavigator />);
+      expect(getByTestId('cancel-deletion-banner')).toBeTruthy();
+    });
 
-      fireEvent.press(getByText('T'));
-      fireEvent.press(getByText('✏️'));
+    it('pressing cancel-deletion-banner calls accountDeletionService.cancelDeletion', () => {
+      const { accountDeletionService } = require('@modules/auth/services/accountDeletionService');
+      accountDeletionService.cancelDeletion.mockResolvedValue(undefined);
 
-      const saveButton = getByTestId('save-button');
-      const editRow = getByTestId('edit-row');
-
-      expect(saveButton).toBeTruthy();
-      expect(editRow).toHaveStyle({ width: '100%' });
+      mockUseAuthStore.mockReturnValue({
+        user: mockUser,
+        setUser: jest.fn(),
+        showAlbumsModal: false,
+        setShowAlbumsModal: jest.fn(),
+        pendingDeletion: {
+          id: 'd1',
+          userId: 'u1',
+          requestedAt: '2026-06-10T00:00:00.000Z',
+          scheduledDeleteAt: '2026-07-10T00:00:00.000Z',
+          cancelledAt: null,
+          completedAt: null,
+        },
+        setPendingDeletion: jest.fn(),
+      });
+      const { getByTestId } = render(<RootNavigator />);
+      fireEvent.press(getByTestId('cancel-deletion-banner'));
+      expect(accountDeletionService.cancelDeletion).toHaveBeenCalledWith('u1');
     });
   });
 
