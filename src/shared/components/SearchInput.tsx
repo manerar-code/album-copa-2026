@@ -43,6 +43,6 @@ const s = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.tx,
-    fontSize: 14,
+    fontSize: 16,
   },
 });

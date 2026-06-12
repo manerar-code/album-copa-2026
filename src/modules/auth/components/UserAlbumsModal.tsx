@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    fontSize: 15,
+    fontSize: 16,
     color: colors.primary,
   },
   saveBtn: {
