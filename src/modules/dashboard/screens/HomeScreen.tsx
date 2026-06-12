@@ -94,6 +94,11 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={s.safeArea}>
+      <HomeHeader
+        onHelp={() => setHelpVisible(true)}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+      />
       <ScrollView
         style={s.container}
         showsVerticalScrollIndicator={false}
@@ -101,13 +106,6 @@ export function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} />
         }
       >
-        {/* Header */}
-        <HomeHeader
-          onHelp={() => setHelpVisible(true)}
-          onRefresh={onRefresh}
-          refreshing={refreshing}
-        />
-
         <View style={s.body}>
           {/* Hero Progress */}
           <GlassCard gold style={s.heroCard}>
