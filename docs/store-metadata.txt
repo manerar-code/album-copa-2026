@@ -1,0 +1,135 @@
+╔══════════════════════════════════════════════════════════════════╗
+║          ÁLBUM COPA 2026 — STORE METADATA (F9)                ║
+║          Copy-paste ready for App Store + Google Play          ║
+║          Prepared: 2026-06-10                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   APP STORE CONNECT (iOS)                       │
+├─────────────────────────────────────────────────────────────────┤
+
+App Name:
+  Álbum Copa 2026
+
+Subtitle (optional — leave blank):
+  (empty)
+
+Description (≤4000 chars):
+  Monte seu álbum digital de figurinhas da Copa do Mundo 2026!
+
+  Colecione figurinhas dos jogadores, complete seu álbum e acompanhe seu progresso — tudo sincronizado entre seus dispositivos. Com login pelo Google, sua coleção fica salva na nuvem com segurança.
+
+  Funcionalidades:
+  • Álbum digital completo com todos os times da Copa 2026
+  • Figurinhas dos principais jogadores de cada seleção
+  • Sistema de coleção: marque figurinhas como "tenho", "faltando" ou "repetida"
+  • Estatísticas detalhadas da sua coleção (total, porcentagem, completados)
+  • Sincronização automática entre dispositivos via sua conta Google
+  • Interface escura moderna e otimizada para visualização em dispositivos móveis
+  • Grátis para usar — sem compras internas
+
+  Prepare-se para o maior torneio de futebol do mundo! Comece hoje mesmo a montar seu álbum digital da Copa do Mundo 2026.
+
+Keywords (≤100 chars):
+  figurinhas,copa,album,panini,stickers,copa mundo,2026,futebol,colecao
+
+Category:
+  Sports
+
+Age Rating:
+  4+ (no objectionable content)
+
+Privacy Policy URL:
+  https://album-copa-2026-sable.vercel.app/privacidade
+
+Release Notes:
+  Versão inicial — Monte sua coleção da Copa do Mundo 2026
+
+Screenshots (iPhone 6.7"):
+  1. Home screen — stats overview (coleção stats)
+  2. Album screen — team list (lista de times)
+  3. Team detail — figurinhas in different states: owned/missing/duplicate
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                  GOOGLE PLAY CONSOLE (Android)                  │
+├─────────────────────────────────────────────────────────────────┤
+
+App Name:
+  Álbum Copa 2026
+
+Short Description (≤30 chars):
+  Monte seu álbum da Copa 2026
+
+Long Description (≤4000 chars):
+  Monte seu álbum digital de figurinhas da Copa do Mundo 2026!
+
+  Colecione figurinhas dos jogadores, complete seu álbum e acompanhe seu progresso — tudo sincronizado entre seus dispositivos. Com login pelo Google, sua coleção fica salva na nuvem com segurança.
+
+  Funcionalidades:
+  • Álbum digital completo com todos os times da Copa 2026
+  • Figurinhas dos principais jogadores de cada seleção
+  • Sistema de coleção: marque figurinhas como "tenho", "faltando" ou "repetida"
+  • Estatísticas detalhadas da sua coleção (total, porcentagem, completados)
+  • Sincronização automática entre dispositivos via sua conta Google
+  • Interface escura moderna e otimizada para visualização em dispositivos móveis
+  • Grátis para usar — sem compras internas
+
+  Prepare-se para o maior torneio de futebol do mundo! Comece hoje mesmo a montar seu álbum digital da Copa do Mundo 2026.
+
+Category:
+  Sports
+
+Privacy Policy URL:
+  https://album-copa-2026-sable.vercel.app/privacidade
+
+Release Notes:
+  Versão inicial — Monte sua coleção da Copa do Mundo 2026
+
+Screenshots (Android phone):
+  1. Home screen — stats overview (coleção stats)
+  2. Album screen — team list (lista de times)
+  3. Team detail — figurinhas in different states: owned/missing/duplicate
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│           GOOGLE PLAY — DATA SAFETY SECTION                    │
+├─────────────────────────────────────────────────────────────────┤
+
+This is a manual form in Play Console > Policy > App content > Data Safety.
+Must be completed by the account holder (cannot be automated).
+
+| Data type                             | Collected? | Purpose                              |
+|---------------------------------------|------------|--------------------------------------|
+| Email address                         | Yes        | Account creation, deletion notific.  |
+| Name                                  | Yes        | Display name (from Google profile)   |
+| Photos (avatar)                       | No         | Avatar URL read from Google, not stored |
+| App interactions (sticker collection) | Yes        | App functionality — sync across devices |
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│            SCREENSHOT CAPTURE INSTRUCTIONS                      │
+├─────────────────────────────────────────────────────────────────┤
+
+iOS (iPhone 15 Pro Max — 6.7"):
+  npx expo start
+  Press "i" to open iOS simulator
+  Navigate to the 3 screens below
+  Cmd+S to capture screenshot (saved to Desktop by default)
+
+Android (Pixel 7 — use Android emulator):
+  npx expo start
+  Press "a" to open Android emulator
+  Navigate to the 3 screens below
+  Click screenshot button in emulator toolbar
+
+Required screens in order:
+  1. Home screen — showing collection stats (total, percentage, completed teams)
+  2. Album screen — showing team list (all groups/selections)
+  3. Team detail — showing figurinhas with different states:
+     - Some marked as "owned" (tenho)
+     - Some marked as "missing" (faltando)
+     - Some marked as "duplicate" (repetida)
+
+Minimum 3 screenshots per device size.
