@@ -74,8 +74,8 @@ export const useUserSettingsStore = create<UserSettingsState>(set => ({
     } catch {
       // fallback abaixo — erro silencioso, usa defaults
     }
-    const allLabels = allTypes.map(t => displayType(t));
-    set({ trackedTypes: Array.from(new Set([...allLabels, ...FIXED_TYPE_LABELS])) });
+    // Default para novos usuarios: apenas os tipos fixos obrigatorios
+    set({ trackedTypes: [...FIXED_TYPE_LABELS] });
   },
 
   resetSettings: () => set({ trackedTypes: null }),
