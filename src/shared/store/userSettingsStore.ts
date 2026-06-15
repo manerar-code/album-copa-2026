@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@shared/storage/keys';
 
-// Tipos fixos — nunca aparecem na configuração (sempre controlados)
-export const FIXED_TYPES = ['Player', 'Foil Player', 'Silver'];
+// Tipos fixos — sempre controlados, o usuario nao pode desmarcar
+export const FIXED_TYPES = ['Player', 'Foil Player'];
 
 // Renomeia tipos para exibição na UI
 export const TYPE_DISPLAY: Record<string, string> = {

@@ -64,14 +64,17 @@ export function AlbumListScreen() {
     return Array.from(set).sort();
   }, [figurinhas, trackedTypes]);
 
+  // Se o tipo selecionado sair dos rastreados (usuario desmarcou nas configs), usa string vazia como fallback
+  const activeType = availableTypes.includes(selectedType) ? selectedType : '';
+
   const selecaoIdsComTipo = useMemo(() => {
-    if (!selectedType) return null;
+    if (!activeType) return null;
     const ids = new Set<string>();
     for (const f of figurinhas) {
-      if (f.type && displayType(f.type) === selectedType) ids.add(f.selecao_id);
+      if (f.type && displayType(f.type) === activeType) ids.add(f.selecao_id);
     }
     return ids;
-  }, [selectedType, figurinhas]);
+  }, [activeType, figurinhas]);
 
   const getTeamStats = useCallback(
     (selecaoId: string) => {
@@ -163,13 +166,13 @@ export function AlbumListScreen() {
             style={s.filterScroll}
             contentContainerStyle={s.filterRow}
           >
-            <TypeChip label="Todos" active={!selectedType} onPress={() => setSelectedType('')} />
+            <TypeChip label="Todos" active={!activeType} onPress={() => setSelectedType('')} />
             {availableTypes.map(t => (
               <TypeChip
                 key={t}
                 label={displayType(t)}
-                active={selectedType === t}
-                onPress={() => setSelectedType(selectedType === t ? '' : t)}
+                active={activeType === t}
+                onPress={() => setSelectedType(activeType === t ? '' : t)}
               />
             ))}
           </ScrollView>
