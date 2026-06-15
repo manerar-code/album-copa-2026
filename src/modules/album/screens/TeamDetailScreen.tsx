@@ -27,7 +27,7 @@ const CARD_W = 96;
 
 export function TeamDetailScreen({ route, navigation }: TeamDetailScreenProps) {
   const { selecaoId } = route.params;
-  const { figurinhas, selecoes, collection, isInitialized } = useStickerStore();
+  const { figurinhas, selecoes, collection, activeUserAlbumId, isInitialized } = useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
   const { setHideFloatingAvatar } = useAuthStore();
   const isSyncing = useRef(false);
@@ -59,7 +59,7 @@ export function TeamDetailScreen({ route, navigation }: TeamDetailScreenProps) {
     if (isSyncing.current) return;
     isSyncing.current = true;
     try {
-      await collectionService.save(collection);
+      if (activeUserAlbumId) await collectionService.save(collection, activeUserAlbumId);
     } catch (e) {
       logger.warn('TeamDetail: local save before navigate failed', e);
     } finally {
