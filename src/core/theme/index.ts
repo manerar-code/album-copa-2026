@@ -204,47 +204,84 @@ export const teamColors: Record<string, { f1: string; f2: string }> = {
 export const defaultTeamColors = { f1: '#1A3A6C', f2: '#0A2342' };
 
 // FIFA code → flag emoji (used in CromoCard when bandeiraUrl is a URL, not an emoji)
+// Includes both FIFA official codes and ISO 3166-1 alpha-3 aliases to handle either convention in DB.
 export const teamFlagEmoji: Record<string, string> = {
-  MEX: '🇲🇽',
-  BRA: '🇧🇷',
-  CAN: '🇨🇦',
-  CHE: '🇨🇭',
-  KOR: '🇰🇷',
-  CZE: '🇨🇿',
-  BIH: '🇧🇦',
-  QAT: '🇶🇦',
-  ZAF: '🇿🇦',
+  // Americas — CONMEBOL
   ARG: '🇦🇷',
-  FRA: '🇫🇷',
-  ESP: '🇪🇸',
-  DEU: '🇩🇪',
-  PRT: '🇵🇹',
-  ENG: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  USA: '🇺🇸',
-  JPN: '🇯🇵',
-  MAR: '🇲🇦',
-  NLD: '🇳🇱',
-  BEL: '🇧🇪',
+  BRA: '🇧🇷',
   URU: '🇺🇾',
   COL: '🇨🇴',
   PER: '🇵🇪',
-  CHL: '🇨🇱',
+  CHI: '🇨🇱',
+  CHL: '🇨🇱', // FIFA=CHI, ISO=CHL
   VEN: '🇻🇪',
   ECU: '🇪🇨',
-  PRY: '🇵🇾',
+  PAR: '🇵🇾',
+  PRY: '🇵🇾', // FIFA=PAR, ISO=PRY
   BOL: '🇧🇴',
-  CRI: '🇨🇷',
+  // Americas — CONCACAF
+  MEX: '🇲🇽',
+  USA: '🇺🇸',
+  CAN: '🇨🇦',
+  CRC: '🇨🇷',
+  CRI: '🇨🇷', // FIFA=CRC, ISO=CRI
   PAN: '🇵🇦',
   JAM: '🇯🇲',
-  HTI: '🇭🇹',
+  HAI: '🇭🇹',
+  HTI: '🇭🇹', // FIFA=HAI, ISO=HTI
   SLV: '🇸🇻',
-  HND: '🇭🇳',
-  GTM: '🇬🇹',
+  HON: '🇭🇳',
+  HND: '🇭🇳', // FIFA=HON, ISO=HND
+  GUA: '🇬🇹',
+  GTM: '🇬🇹', // FIFA=GUA, ISO=GTM
   CUB: '🇨🇺',
-  TTO: '🇹🇹',
+  TRI: '🇹🇹',
+  TTO: '🇹🇹', // FIFA=TRI, ISO=TTO
   GUY: '🇬🇾',
   SUR: '🇸🇷',
   DOM: '🇩🇴',
+  // Europe
+  ENG: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  FRA: '🇫🇷',
+  ESP: '🇪🇸',
+  GER: '🇩🇪',
+  DEU: '🇩🇪', // FIFA=GER, ISO=DEU
+  POR: '🇵🇹',
+  PRT: '🇵🇹', // FIFA=POR, ISO=PRT
+  NED: '🇳🇱',
+  NLD: '🇳🇱', // FIFA=NED, ISO=NLD
+  BEL: '🇧🇪',
+  SUI: '🇨🇭',
+  CHE: '🇨🇭', // FIFA=SUI, ISO=CHE
+  CZE: '🇨🇿',
+  BIH: '🇧🇦',
+  SCO: '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  WAL: '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+  IRL: '🇮🇪',
+  SVK: '🇸🇰',
+  SVN: '🇸🇮',
+  HRV: '🇭🇷',
+  CRO: '🇭🇷', // FIFA=CRO, ISO=HRV
+  SRB: '🇷🇸',
+  GRE: '🇬🇷',
+  GRC: '🇬🇷', // FIFA=GRE, ISO=GRC
+  TUR: '🇹🇷',
+  AUT: '🇦🇹',
+  POL: '🇵🇱',
+  DEN: '🇩🇰',
+  DNK: '🇩🇰', // FIFA=DEN, ISO=DNK
+  NOR: '🇳🇴',
+  SWE: '🇸🇪',
+  FIN: '🇫🇮',
+  ISL: '🇮🇸',
+  ROU: '🇷🇴',
+  UKR: '🇺🇦',
+  HUN: '🇭🇺',
+  ALB: '🇦🇱',
+  MKD: '🇲🇰',
+  MNE: '🇲🇪',
+  // Africa
+  MAR: '🇲🇦',
   NGA: '🇳🇬',
   GHA: '🇬🇭',
   CMR: '🇨🇲',
@@ -253,16 +290,46 @@ export const teamFlagEmoji: Record<string, string> = {
   EGY: '🇪🇬',
   TUN: '🇹🇳',
   ALG: '🇩🇿',
+  DZA: '🇩🇿', // FIFA=ALG, ISO=DZA
+  RSA: '🇿🇦',
+  ZAF: '🇿🇦', // FIFA=RSA, ISO=ZAF
   ETH: '🇪🇹',
   KEN: '🇰🇪',
-  SAU: '🇸🇦',
-  IRN: '🇮🇷',
-  IRQ: '🇮🇶',
+  TAN: '🇹🇿',
+  TZA: '🇹🇿',
+  UGA: '🇺🇬',
+  ZIM: '🇿🇼',
+  ZWE: '🇿🇼',
+  GAB: '🇬🇦',
+  ANG: '🇦🇴',
+  AGO: '🇦🇴',
+  // Asia / Middle East
+  JPN: '🇯🇵',
+  KOR: '🇰🇷',
   AUS: '🇦🇺',
   NZL: '🇳🇿',
+  QAT: '🇶🇦',
+  KSA: '🇸🇦',
+  SAU: '🇸🇦', // FIFA=KSA, ISO=SAU
+  IRN: '🇮🇷',
+  IRQ: '🇮🇶',
+  CHN: '🇨🇳',
+  IDN: '🇮🇩',
+  THA: '🇹🇭',
+  VIE: '🇻🇳',
+  VNM: '🇻🇳',
+  IND: '🇮🇳',
+  OMA: '🇴🇲',
+  OMN: '🇴🇲',
+  UAE: '🇦🇪',
+  JOR: '🇯🇴',
+  LBN: '🇱🇧',
+  SYR: '🇸🇾',
+  // Special sections
   FWC: '🏆',
   PAW: '🅿️',
   HCC: '🌎',
+  FWH: '📖',
 };
 
 // Legacy export
