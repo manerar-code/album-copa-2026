@@ -14,7 +14,7 @@ interface Props {
 }
 
 export function TypeSettingsModal({ visible, onClose }: Props) {
-  const { figurinhas } = useStickerStore();
+  const { figurinhas, activeUserAlbumId } = useStickerStore();
   const { trackedTypes, setTrackedTypes } = useUserSettingsStore();
 
   // Tipos configuráveis como labels de exibição (sem os fixos)
@@ -35,7 +35,7 @@ export function TypeSettingsModal({ visible, onClose }: Props) {
   const toggle = async (label: string) => {
     const current = trackedTypes ?? [...configurableLabels, ...FIXED_TYPE_LABELS];
     const next = current.includes(label) ? current.filter(t => t !== label) : [...current, label];
-    await setTrackedTypes(next);
+    await setTrackedTypes(next, activeUserAlbumId);
   };
 
   return (

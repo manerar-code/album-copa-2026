@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useAuthStore } from '@modules/auth/store/authStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { userAlbumService } from '@shared/services/userAlbumService';
 import { accountDeletionService } from '@modules/auth/services/accountDeletionService';
@@ -35,6 +36,17 @@ export function useUserLogin() {
       const activeAlbum = albums[0];
       store.setActiveUserAlbum(activeAlbum.id);
       await store.loadCollection(activeAlbum.id);
+
+      // Carrega configuracoes de tipo escopadas por usuario
+      const allTypes = Array.from(
+        new Set(
+          useStickerStore
+            .getState()
+            .figurinhas.map(f => f.type)
+            .filter(Boolean),
+        ),
+      ) as string[];
+      await useUserSettingsStore.getState().loadSettings(allTypes, activeAlbum.id);
 
       const allEntries = await Promise.all(
         albums.map(async a => {

@@ -36,31 +36,35 @@ export function isTypeTracked(
   return trackedTypes.includes(label);
 }
 
+// Chave de storage escopada por usuario — evita que dois usuarios no mesmo dispositivo
+// compartilhem as mesmas configuracoes de tipos
+const settingsKey = (userAlbumId?: string | null): string =>
+  userAlbumId ? `user_settings_${userAlbumId}` : STORAGE_KEYS.USER_SETTINGS;
+
 interface UserSettingsState {
   // null = ainda não carregou (usa todos)
   trackedTypes: string[] | null;
-  setTrackedTypes: (types: string[]) => Promise<void>;
-  loadSettings: (allTypes: string[]) => Promise<void>;
+  setTrackedTypes: (types: string[], userAlbumId?: string | null) => Promise<void>;
+  loadSettings: (allTypes: string[], userAlbumId?: string | null) => Promise<void>;
+  resetSettings: () => void;
 }
 
 export const useUserSettingsStore = create<UserSettingsState>(set => ({
   trackedTypes: null,
 
-  setTrackedTypes: async (types: string[]) => {
-    // Normaliza para labels de exibição e sempre inclui os tipos fixos
+  setTrackedTypes: async (types: string[], userAlbumId?: string | null) => {
     const normalized = types.map(t => displayType(t));
     const final = Array.from(new Set([...normalized, ...FIXED_TYPE_LABELS]));
     set({ trackedTypes: final });
-    await AsyncStorage.setItem(STORAGE_KEYS.USER_SETTINGS, JSON.stringify({ trackedTypes: final }));
+    await AsyncStorage.setItem(settingsKey(userAlbumId), JSON.stringify({ trackedTypes: final }));
   },
 
-  loadSettings: async (allTypes: string[]) => {
+  loadSettings: async (allTypes: string[], userAlbumId?: string | null) => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER_SETTINGS);
+      const raw = await AsyncStorage.getItem(settingsKey(userAlbumId));
       if (raw) {
         const parsed = JSON.parse(raw) as { trackedTypes?: string[] };
         if (parsed.trackedTypes) {
-          // Normaliza valores antigos (podem estar em formato raw, ex: 'foil') para labels
           const normalized = parsed.trackedTypes.map(t => displayType(t));
           const merged = Array.from(new Set([...normalized, ...FIXED_TYPE_LABELS]));
           set({ trackedTypes: merged });
@@ -70,8 +74,9 @@ export const useUserSettingsStore = create<UserSettingsState>(set => ({
     } catch {
       // fallback abaixo — erro silencioso, usa defaults
     }
-    // Default: todos os tipos normalizados + sempre inclui os tipos fixos
     const allLabels = allTypes.map(t => displayType(t));
     set({ trackedTypes: Array.from(new Set([...allLabels, ...FIXED_TYPE_LABELS])) });
   },
+
+  resetSettings: () => set({ trackedTypes: null }),
 }));

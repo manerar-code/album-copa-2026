@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@modules/auth/store/authStore';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { syncService } from '@shared/services/syncService';
 import { offlineQueueService } from '@shared/services/offlineQueueService';
 import { logger } from '@shared/utils/logger';
@@ -79,6 +80,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     s.setUserAlbums([]);
     s.setActiveUserAlbum(null);
     s.setAllCollections({});
+    // Limpa configuracoes do usuario — proximo login recarrega as settings corretas
+    useUserSettingsStore.getState().resetSettings();
   }, []);
 
   useAuthListener(handleSignIn, handleSignOut, bootstrapSyncedUserId);
