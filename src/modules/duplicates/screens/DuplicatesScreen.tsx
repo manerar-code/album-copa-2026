@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { useUserSettingsStore, isTypeTracked } from '@shared/store/userSettingsStore';
-import { SearchInput } from '@shared/components/SearchInput';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
 import { GlassCard } from '@shared/components/GlassCard';
@@ -27,12 +26,10 @@ import {
 } from '@core/theme';
 
 export function DuplicatesScreen() {
-  const [query, setQuery] = useState('');
   const { figurinhas, selecoes, collection } = useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
 
   const sections = useMemo(() => {
-    const q = query.toLowerCase();
     return selecoes
       .map(selecao => {
         const codigoFifa = selecao.codigo_fifa;
@@ -40,12 +37,7 @@ export function DuplicatesScreen() {
           const isDuplicate = (collection[f.id] ?? 'missing') === 'duplicate';
           const matchesSelecao = f.selecao_id === selecao.id;
           const matchesType = isTypeTracked(trackedTypes, f.type);
-          const matchesQuery =
-            !q ||
-            f.numero.toLowerCase().includes(q) ||
-            selecao.nome.toLowerCase().includes(q) ||
-            selecao.codigo_fifa.toLowerCase().includes(q);
-          return isDuplicate && matchesSelecao && matchesType && matchesQuery;
+          return isDuplicate && matchesSelecao && matchesType;
         });
         return {
           title: selecao.nome,
@@ -58,7 +50,7 @@ export function DuplicatesScreen() {
         };
       })
       .filter(s => s.data.length > 0);
-  }, [figurinhas, selecoes, collection, query, trackedTypes]);
+  }, [figurinhas, selecoes, collection, trackedTypes]);
 
   const total = sections.reduce((acc, s) => acc + s.count, 0);
 
@@ -83,13 +75,13 @@ export function DuplicatesScreen() {
         subtitle={`${total} figurinhas · ${sections.length} seleções`}
       />
 
-      <View style={s.searchBox}>
-        <SearchInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Buscar repetida para trocar…"
-        />
-      </View>
+      {total > 0 && (
+        <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+          <Text style={s.shareBtnText} numberOfLines={1}>
+            📲 Enviar repetidas no WhatsApp
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <SectionList
         sections={sections}
@@ -113,13 +105,6 @@ export function DuplicatesScreen() {
             title="Nenhuma repetida"
             subtitle="Você não tem figurinhas duplicadas."
           />
-        }
-        ListFooterComponent={
-          sections.length > 0 ? (
-            <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-              <Text style={s.shareBtnText}>📲 Compartilhar via WhatsApp</Text>
-            </TouchableOpacity>
-          ) : null
         }
         renderSectionHeader={({ section }) => (
           <View style={s.sectionHeader}>
@@ -161,13 +146,6 @@ export function DuplicatesScreen() {
 
 const s = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.ink900 },
-  searchBox: {
-    backgroundColor: colors.ink850,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lineSoft,
-  },
   flatList: { backgroundColor: colors.appBg },
   list: { padding: spacing.md, flexGrow: 1 },
 
@@ -207,7 +185,9 @@ const s = StyleSheet.create({
     backgroundColor: '#25D366',
     borderRadius: radius.glass,
     padding: spacing.md,
-    margin: spacing.md,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
     alignItems: 'center',
   },
   shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },

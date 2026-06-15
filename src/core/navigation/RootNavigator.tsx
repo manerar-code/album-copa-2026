@@ -16,6 +16,7 @@ import { HomeScreen } from '@modules/dashboard/screens/HomeScreen';
 import { MissingScreen } from '@modules/missing/screens/MissingScreen';
 import { DuplicatesScreen } from '@modules/duplicates/screens/DuplicatesScreen';
 import { StatsScreen } from '@modules/dashboard/screens/StatsScreen';
+import { TradesScreen } from '@modules/trades/screens/TradesScreen';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
@@ -24,6 +25,7 @@ export const tabIcons: Record<string, string> = {
   Album: '📖',
   Missing: '🔍',
   Duplicates: '🔄',
+  Trades: '🤝',
   Stats: '📊',
 };
 
@@ -93,6 +95,7 @@ export function RootNavigator() {
             component={DuplicatesScreen}
             options={{ title: 'Repetidas' }}
           />
+          <Tab.Screen name="Trades" component={TradesScreen} options={{ title: 'Trocas' }} />
           <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
         </Tab.Navigator>
 

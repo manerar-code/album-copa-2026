@@ -7,6 +7,7 @@ export type BottomTabParamList = {
   Album: NavigatorScreenParams<AlbumStackParamList> | undefined;
   Missing: undefined;
   Duplicates: undefined;
+  Trades: undefined;
   Stats: undefined;
 };
 
@@ -18,6 +19,7 @@ export type AlbumStackParamList = {
 export type HomeScreenProps = BottomTabScreenProps<BottomTabParamList, 'Home'>;
 export type MissingScreenProps = BottomTabScreenProps<BottomTabParamList, 'Missing'>;
 export type DuplicatesScreenProps = BottomTabScreenProps<BottomTabParamList, 'Duplicates'>;
+export type TradesScreenProps = BottomTabScreenProps<BottomTabParamList, 'Trades'>;
 
 export type AlbumListScreenProps = CompositeScreenProps<
   StackScreenProps<AlbumStackParamList, 'AlbumList'>,

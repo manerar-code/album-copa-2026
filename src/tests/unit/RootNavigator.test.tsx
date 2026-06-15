@@ -34,6 +34,10 @@ jest.mock('@modules/dashboard/screens/StatsScreen', () => ({
   StatsScreen: () => null,
 }));
 
+jest.mock('@modules/trades/screens/TradesScreen', () => ({
+  TradesScreen: () => null,
+}));
+
 jest.mock('@modules/auth/screens/LoginScreen', () => ({
   LoginScreen: () => null,
 }));
@@ -364,5 +368,13 @@ describe('RootNavigator', () => {
     it('Stats tab uses chart emoji (unchanged)', () => {
       expect(tabIcons['Stats']).toBe('📊');
     });
+
+    it('Trades tab uses handshake emoji', () => {
+      expect(tabIcons['Trades']).toBe('🤝');
+    });
+  });
+
+  it('renders without crashing with Trades tab registered', () => {
+    expect(() => render(<RootNavigator />)).not.toThrow();
   });
 });
