@@ -145,6 +145,46 @@ describe('parseTradeList', () => {
     });
   });
 
+  describe('CC variant format (CC-LAM10, CC-US4, CC-RW14)', () => {
+    it('concatenated CC-LAM: CC-LAM10 → [{CC-LAM, 10}]', () => {
+      const result = parseTradeList('CC-LAM10');
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0]).toEqual({ codigoFifa: 'CC-LAM', numero: '10' });
+    });
+
+    it('concatenated CC-US: CC-US4 → [{CC-US, 4}]', () => {
+      const result = parseTradeList('CC-US4');
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0]).toEqual({ codigoFifa: 'CC-US', numero: '4' });
+    });
+
+    it('concatenated CC-RW with leading zero: CC-RW04 → [{CC-RW, 4}]', () => {
+      const result = parseTradeList('CC-RW04');
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0]).toEqual({ codigoFifa: 'CC-RW', numero: '4' });
+    });
+
+    it('section CC-LAM format: CC-LAM: 10, 14 → [{CC-LAM,10}, {CC-LAM,14}]', () => {
+      const result = parseTradeList('CC-LAM: 10, 14');
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries).toContainEqual({ codigoFifa: 'CC-LAM', numero: '10' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'CC-LAM', numero: '14' });
+    });
+
+    it('does not parse "LAM10" as a separate entry when CC-LAM10 is consumed', () => {
+      const result = parseTradeList('CC-LAM10');
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries.some(e => e.codigoFifa === 'LAM')).toBe(false);
+    });
+
+    it('mixed CC and regular stickers: CC-LAM10 BRA5 → 2 entries', () => {
+      const result = parseTradeList('CC-LAM10 BRA5');
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries).toContainEqual({ codigoFifa: 'CC-LAM', numero: '10' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'BRA', numero: '5' });
+    });
+  });
+
   describe('conjunction "e" as number separator', () => {
     it('BRA: 9 e 11 → [{BRA,9}, {BRA,11}]', () => {
       const result = parseTradeList('BRA: 9 e 11');

@@ -22,18 +22,45 @@ export function parseTradeList(text: string): ParseResult {
 
   const rawEntries: ParsedEntry[] = [];
 
-  // Track character ranges consumed by Pass 1 to avoid double-counting in Pass 2
+  // Track character ranges consumed to avoid double-counting in later passes
   const consumedRanges: Array<[number, number]> = [];
+  let match: RegExpExecArray | null;
+
+  // Pass 0a — CC section format: CC-LAM: 10, 14  (must run before Pass 1/2)
+  const pass0SectionRegex = /(CC-[A-Za-z]{1,4})\s*:\s*([\d][,;\s\d]*)/gi;
+  while ((match = pass0SectionRegex.exec(normalizedText)) !== null) {
+    const prefix = match[1].toUpperCase();
+    consumedRanges.push([match.index, match.index + match[0].length]);
+    const numbers = match[2].split(/[,;\s]+/).filter(n => /^\d+$/.test(n));
+    for (const num of numbers) {
+      rawEntries.push({ codigoFifa: prefix, numero: stripLeadingZeros(num) });
+    }
+  }
+
+  // Pass 0b — CC concatenated format: CC-LAM10  (must run before Pass 2 to avoid "LAM10" being parsed as {LAM,10})
+  const pass0ConcatRegex = /(CC-[A-Za-z]{1,4})(\d+)/gi;
+  while ((match = pass0ConcatRegex.exec(normalizedText)) !== null) {
+    const spanStart = match.index;
+    const spanEnd = match.index + match[0].length;
+    const overlaps = consumedRanges.some(([s, e]) => spanStart < e && spanEnd > s);
+    if (overlaps) continue;
+    consumedRanges.push([spanStart, spanEnd]);
+    rawEntries.push({ codigoFifa: match[1].toUpperCase(), numero: stripLeadingZeros(match[2]) });
+  }
 
   // Pass 1 — section block format: PREFIX: 1, 2, 3
   const pass1Regex = /([A-Za-z]{2,4})\s*:\s*([\d][,;\s\d]*)/g;
-  let match: RegExpExecArray | null;
 
   while ((match = pass1Regex.exec(normalizedText)) !== null) {
-    const prefix = match[1].toUpperCase();
-    const numberBlock = match[2];
     const rangeStart = match.index;
     const rangeEnd = match.index + match[0].length;
+
+    // Skip spans already consumed by Pass 0
+    const overlaps = consumedRanges.some(([s, e]) => rangeStart < e && rangeEnd > s);
+    if (overlaps) continue;
+
+    const prefix = match[1].toUpperCase();
+    const numberBlock = match[2];
     consumedRanges.push([rangeStart, rangeEnd]);
 
     const numbers = numberBlock.split(/[,;\s]+/).filter(n => /^\d+$/.test(n));

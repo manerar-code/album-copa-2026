@@ -56,6 +56,38 @@ const figurinhas: Figurinha[] = [
   },
 ];
 
+const CC_LAM: Selecao = {
+  id: 'sel-cc-lam',
+  album_id: 'album-1',
+  nome: 'Coca-Cola LAM',
+  codigo_fifa: 'CC',
+  ordem: 99,
+  bandeira_url: '',
+};
+
+const ccFigurinhas: Figurinha[] = [
+  {
+    id: 'fig-cc-lam-10',
+    album_id: 'album-1',
+    selecao_id: 'sel-cc-lam',
+    numero: 'CC-LAM10',
+    nome: 'CC LAM 10',
+    type: 'player',
+    descricao: '',
+    ordem: 10,
+  },
+  {
+    id: 'fig-cc-lam-14',
+    album_id: 'album-1',
+    selecao_id: 'sel-cc-lam',
+    numero: 'CC-LAM14',
+    nome: 'CC LAM 14',
+    type: 'player',
+    descricao: '',
+    ordem: 14,
+  },
+];
+
 describe('resolveEntries', () => {
   it('returns figurinha IDs for valid entries', () => {
     const entries: ParsedEntry[] = [
@@ -108,5 +140,42 @@ describe('resolveEntries', () => {
   it('is case-insensitive for codigoFifa', () => {
     const entries: ParsedEntry[] = [{ codigoFifa: 'bra', numero: '2' }];
     expect(resolveEntries(entries, figurinhas, selecoes)).toEqual(['fig-bra-2']);
+  });
+
+  describe('CC variant stickers (CC-LAM, CC-US, CC-RW)', () => {
+    const allFigurinhas = [...figurinhas, ...ccFigurinhas];
+    const allSelecoes = [...selecoes, CC_LAM];
+
+    it('resolves CC-LAM10 entry to fig-cc-lam-10', () => {
+      const entries: ParsedEntry[] = [{ codigoFifa: 'CC-LAM', numero: '10' }];
+      expect(resolveEntries(entries, allFigurinhas, allSelecoes)).toEqual(['fig-cc-lam-10']);
+    });
+
+    it('resolves multiple CC entries: CC-LAM10 and CC-LAM14', () => {
+      const entries: ParsedEntry[] = [
+        { codigoFifa: 'CC-LAM', numero: '10' },
+        { codigoFifa: 'CC-LAM', numero: '14' },
+      ];
+      const result = resolveEntries(entries, allFigurinhas, allSelecoes);
+      expect(result).toHaveLength(2);
+      expect(result).toContain('fig-cc-lam-10');
+      expect(result).toContain('fig-cc-lam-14');
+    });
+
+    it('returns empty for unknown CC numero', () => {
+      const entries: ParsedEntry[] = [{ codigoFifa: 'CC-LAM', numero: '99' }];
+      expect(resolveEntries(entries, allFigurinhas, allSelecoes)).toEqual([]);
+    });
+
+    it('resolves mixed CC and regular stickers together', () => {
+      const entries: ParsedEntry[] = [
+        { codigoFifa: 'CC-LAM', numero: '10' },
+        { codigoFifa: 'BRA', numero: '1' },
+      ];
+      const result = resolveEntries(entries, allFigurinhas, allSelecoes);
+      expect(result).toHaveLength(2);
+      expect(result).toContain('fig-cc-lam-10');
+      expect(result).toContain('fig-bra-1');
+    });
   });
 });
