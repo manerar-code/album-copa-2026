@@ -291,6 +291,74 @@ describe('parseTradeList', () => {
     });
   });
 
+  describe('full WhatsApp trade list (regression)', () => {
+    // Exact text pasted from WhatsApp — includes: Preciso: header, flag emoji tag sequences
+    // (SCO/ENG), "e" conjunction, colon-optional DEU, multiple stickers per line
+    const FULL_LIST = [
+      'Preciso:',
+      'SUI: 16',
+      'BRA: 9 e 11',
+      'HAI: 5 e 12',
+      `SCO: \u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} 11`,
+      'USA: 11',
+      'AUS: 11',
+      'DEU 5, 9 e 16',
+      'CUW: 2',
+      'ECU: 3',
+      'EGY: 3',
+      'NZL: 5 e 9',
+      'ESP: 10 e 11',
+      'KSA: 8',
+      'FRA: 9',
+      'SEN: 7',
+      'NOR: 20',
+      'POR: 15',
+      'COD: 19',
+      'COL: 4',
+      `ENG: \u{E0065}\u{E006E}\u{E0067}\u{E007F} 12 e 14`,
+      'CRO: 4, 17 e 20',
+      'PAN: 9',
+    ].join('\n');
+
+    it('parses all 31 stickers from a full multiline WhatsApp list', () => {
+      const result = parseTradeList(FULL_LIST);
+      expect(result.entries).toHaveLength(31);
+      expect(result.hasNoPrefix).toBe(false);
+    });
+
+    it('"Preciso:" header does not produce a false entry', () => {
+      const result = parseTradeList(FULL_LIST);
+      expect(result.entries.every(e => e.codigoFifa !== 'PREC' && e.codigoFifa !== 'PRE')).toBe(
+        true,
+      );
+    });
+
+    it('DEU without colon parses to 3 entries: 5, 9, 16', () => {
+      const result = parseTradeList(FULL_LIST);
+      const deu = result.entries.filter(e => e.codigoFifa === 'DEU');
+      expect(deu.map(e => e.numero).sort()).toEqual(['16', '5', '9']);
+    });
+
+    it('SCO with flag emoji tag sequences resolves to {SCO, 11}', () => {
+      const result = parseTradeList(FULL_LIST);
+      const sco = result.entries.filter(e => e.codigoFifa === 'SCO');
+      expect(sco).toHaveLength(1);
+      expect(sco[0].numero).toBe('11');
+    });
+
+    it('ENG with flag emoji tag sequences resolves to {ENG,12} and {ENG,14}', () => {
+      const result = parseTradeList(FULL_LIST);
+      const eng = result.entries.filter(e => e.codigoFifa === 'ENG');
+      expect(eng.map(e => e.numero).sort()).toEqual(['12', '14']);
+    });
+
+    it('CRO: 4, 17 e 20 parses to 3 entries', () => {
+      const result = parseTradeList(FULL_LIST);
+      const cro = result.entries.filter(e => e.codigoFifa === 'CRO');
+      expect(cro.map(e => e.numero).sort()).toEqual(['17', '20', '4']);
+    });
+  });
+
   describe('success criteria', () => {
     it('parseTradeList("URU01 URU2") returns 2 entries with hasNoPrefix: false', () => {
       const result = parseTradeList('URU01 URU2');

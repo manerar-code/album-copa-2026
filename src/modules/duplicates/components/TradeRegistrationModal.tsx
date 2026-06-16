@@ -32,23 +32,33 @@ export function TradeRegistrationModal({ visible, onClose }: TradeRegistrationMo
     onClose();
   };
 
+  const sentParse = useMemo(() => parseTradeList(sentText), [sentText]);
+  const receivedParse = useMemo(() => parseTradeList(recebidoText), [recebidoText]);
+
   const sentIds = useMemo(
-    () => resolveEntries(parseTradeList(sentText).entries, figurinhas, selecoes),
-    [sentText, figurinhas, selecoes],
+    () => resolveEntries(sentParse.entries, figurinhas, selecoes),
+    [sentParse, figurinhas, selecoes],
   );
 
   const receivedIds = useMemo(
-    () => resolveEntries(parseTradeList(recebidoText).entries, figurinhas, selecoes),
-    [recebidoText, figurinhas, selecoes],
+    () => resolveEntries(receivedParse.entries, figurinhas, selecoes),
+    [receivedParse, figurinhas, selecoes],
   );
 
   const canConfirm = useMemo(
-    () =>
-      parseTradeList(sentText).entries.length > 0 ||
-      parseTradeList(recebidoText).entries.length > 0,
-    [sentText, recebidoText],
+    () => sentParse.entries.length > 0 || receivedParse.entries.length > 0,
+    [sentParse, receivedParse],
   );
   const hasSummary = sentText.trim().length > 0 || recebidoText.trim().length > 0;
+
+  const sentLabel =
+    sentIds.length === sentParse.entries.length
+      ? `${sentIds.length}`
+      : `${sentIds.length}/${sentParse.entries.length}`;
+  const receivedLabel =
+    receivedIds.length === receivedParse.entries.length
+      ? `${receivedIds.length}`
+      : `${receivedIds.length}/${receivedParse.entries.length}`;
 
   const handleConfirm = async () => {
     if (!canConfirm || saving) return;
@@ -93,7 +103,7 @@ export function TradeRegistrationModal({ visible, onClose }: TradeRegistrationMo
 
           {hasSummary && (
             <Text style={s.summary}>
-              {sentIds.length} enviadas · {receivedIds.length} recebidas
+              {sentLabel} enviadas · {receivedLabel} recebidas
             </Text>
           )}
 
