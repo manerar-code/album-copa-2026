@@ -26,7 +26,8 @@ import {
 } from '@core/theme';
 
 export function DuplicatesScreen() {
-  const { figurinhas, selecoes, collection, getDupCount, resetSticker } = useStickerStore();
+  const { figurinhas, selecoes, collection, getDupCount, resetSticker, toggleSticker } =
+    useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
 
   const sections = useMemo(() => {
@@ -140,6 +141,7 @@ export function DuplicatesScreen() {
                   f2={section.tc.f2}
                   state="duplicate"
                   dupCount={getDupCount(f.id)}
+                  onPress={() => toggleSticker(f.id)}
                   onPressDupBadge={() => resetSticker(f.id)}
                   width={96}
                 />
