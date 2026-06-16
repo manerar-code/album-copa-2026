@@ -96,10 +96,11 @@ export function getFlagUrl(codigoFifa: string): string {
 
 export function getFlagEmoji(codigoFifa: string): string {
   const iso = getFlagIsoCode(codigoFifa);
-  if (!iso) return '';
+  // Regional indicator emojis only work for plain 2-letter ISO codes (no hyphen subtags)
+  if (!iso || iso.includes('-')) return '';
   const codePoints = iso
     .toUpperCase()
     .split('')
-    .map(char => 0x1F1E6 + (char.charCodeAt(0) - 65));
+    .map(char => 0x1f1e6 + (char.charCodeAt(0) - 65));
   return String.fromCodePoint(...codePoints);
 }

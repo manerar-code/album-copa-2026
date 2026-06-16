@@ -44,7 +44,7 @@ describe('formatTradeResult', () => {
   });
 
   describe('team lines', () => {
-    it('single seleção with multiple stickers → contains URU: 1, 4, 12', () => {
+    it('single seleção with multiple stickers → contains team name and numbers', () => {
       const matches = [
         {
           selecao: MOCK_SELECAO_URU,
@@ -56,7 +56,7 @@ describe('formatTradeResult', () => {
         },
       ];
       const result = formatTradeResult(matches, ALBUM_NAME);
-      expect(result).toContain('URU: 1, 4, 12');
+      expect(result).toContain('Uruguai: 1, 4, 12');
     });
 
     it('multiple seleções appear on separate lines', () => {
@@ -65,10 +65,10 @@ describe('formatTradeResult', () => {
         { selecao: MOCK_SELECAO_BRA, figurinhas: [makeFig('f2', 'sel-bra', '7', 'Vini')] },
       ];
       const result = formatTradeResult(matches, ALBUM_NAME);
-      expect(result).toContain('URU:');
-      expect(result).toContain('BRA:');
-      const uruIndex = result.indexOf('URU:');
-      const braIndex = result.indexOf('BRA:');
+      expect(result).toContain('Uruguai:');
+      expect(result).toContain('Brasil:');
+      const uruIndex = result.indexOf('Uruguai:');
+      const braIndex = result.indexOf('Brasil:');
       expect(uruIndex).not.toBe(braIndex);
     });
 

@@ -18,8 +18,9 @@ export function formatTradeResult(matches: TradeMatch[], albumName: string): str
 
   for (const { selecao, figurinhas } of matches) {
     const flag = getFlagEmoji(selecao.codigo_fifa);
+    const label = flag ? `${flag} ${selecao.nome}` : selecao.nome;
     const numbers = figurinhas.map(f => f.numero).join(', ');
-    lines.push(`${flag} ${selecao.codigo_fifa}: ${numbers}`);
+    lines.push(`${label}: ${numbers}`);
     totalCount += figurinhas.length;
   }
 

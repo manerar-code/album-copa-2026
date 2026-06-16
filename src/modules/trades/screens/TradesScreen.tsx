@@ -244,6 +244,13 @@ export function TradesScreen() {
             : 'Cole a lista de repetidas do amigo'
         }
       />
+      {totalCount > 0 && (
+        <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+          <Text style={s.shareBtnText} numberOfLines={1}>
+            📲 Enviar pelo WhatsApp
+          </Text>
+        </TouchableOpacity>
+      )}
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
@@ -251,15 +258,6 @@ export function TradesScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={listHeader}
-        ListFooterComponent={
-          totalCount > 0 ? (
-            <View style={s.footer}>
-              <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-                <Text style={s.shareBtnText}>📲 Enviar pelo WhatsApp</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
         ListEmptyComponent={
           tradeState !== null && tradeState.result !== null ? (
             <View>
@@ -418,11 +416,13 @@ const s = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
-  footer: { marginTop: spacing.md },
   shareBtn: {
     backgroundColor: '#25D366',
     borderRadius: radius.glass,
     padding: spacing.md,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
     alignItems: 'center',
   },
   shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
