@@ -118,9 +118,6 @@ export const StickerCard = React.memo(function StickerCard({
       onPress={handlePress}
       dupCount={status === 'duplicate' ? getDupCount(figurinhaId) : undefined}
       onPressDupBadge={status === 'duplicate' ? () => resetSticker(figurinhaId) : undefined}
-      accessibilityLabel={`Figurinha ${numero}${descricao ? ` ${descricao}` : ''}, estado: ${status}`}
-      accessibilityRole="button"
-      accessibilityHint="Toque para alterar o estado da figurinha"
     />
   );
 
