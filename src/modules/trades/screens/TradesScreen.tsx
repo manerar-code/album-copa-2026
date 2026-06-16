@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
+import { useUserSettingsStore } from '@shared/store/userSettingsStore';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
 import { FlagImage } from '@shared/components/FlagImage';
@@ -52,30 +53,55 @@ interface TradeState {
   preview: string | null;
 }
 
+// CC stickers have no selecao of their own — "CC4" resolves to "CC-LAM4", "CC-US4" or "CC-RW4"
+// based on which Coca Cola type the user has configured in their tracked types.
+function getCCVariantPrefix(trackedTypes: string[] | null): string {
+  if (!trackedTypes) return 'LAM';
+  if (trackedTypes.some(t => t.includes('Latin America'))) return 'LAM';
+  if (trackedTypes.some(t => t.includes('USA Canada'))) return 'US';
+  if (trackedTypes.some(t => t.includes('Rest of the World'))) return 'RW';
+  return 'LAM';
+}
+
 function runComparison(
   parseResult: ParseResult,
   selecoes: Selecao[],
   figurinhas: Figurinha[],
   collection: Record<string, string>,
+  trackedTypes: string[] | null,
 ): ComparisonResult | null {
   const tradeMap = new Map<string, { selecao: Selecao; figurinhas: Figurinha[] }>();
   const allMap = new Map<string, { selecao: Selecao; figurinhas: Figurinha[] }>();
   let catalogMissCount = 0;
 
   for (const entry of parseResult.entries) {
-    const selecao = selecoes.find(
-      s => s.codigo_fifa.toUpperCase() === entry.codigoFifa.toUpperCase(),
-    );
-    if (!selecao) {
-      catalogMissCount++;
-      continue;
-    }
+    let selecao: Selecao | undefined;
+    let figurinha: Figurinha | undefined;
 
-    // DB stores numero as "{codigoFifa}{number}" (e.g. "BRA1", "BRA10")
-    const expectedNumero = `${entry.codigoFifa}${entry.numero}`;
-    const figurinha = figurinhas.find(
-      f => f.selecao_id === selecao.id && f.numero === expectedNumero,
-    );
+    if (entry.codigoFifa.toUpperCase() === 'CC') {
+      // CC stickers: look up by full numero using configured variant
+      const ccPrefix = getCCVariantPrefix(trackedTypes);
+      const expectedNumero = `CC-${ccPrefix}${entry.numero}`;
+      figurinha = figurinhas.find(f => f.numero === expectedNumero);
+      if (!figurinha) {
+        catalogMissCount++;
+        continue;
+      }
+      selecao = selecoes.find(s => s.id === figurinha!.selecao_id);
+      if (!selecao) {
+        catalogMissCount++;
+        continue;
+      }
+    } else {
+      selecao = selecoes.find(s => s.codigo_fifa.toUpperCase() === entry.codigoFifa.toUpperCase());
+      if (!selecao) {
+        catalogMissCount++;
+        continue;
+      }
+      // DB stores numero as "{codigoFifa}{number}" (e.g. "BRA1", "BRA10")
+      const expectedNumero = `${entry.codigoFifa}${entry.numero}`;
+      figurinha = figurinhas.find(f => f.selecao_id === selecao!.id && f.numero === expectedNumero);
+    }
 
     if (!figurinha) {
       catalogMissCount++;
@@ -124,6 +150,7 @@ function runComparison(
 
 export function TradesScreen() {
   const { selecoes, figurinhas, collection, album, getStats } = useStickerStore();
+  const { trackedTypes } = useUserSettingsStore();
   const [inputText, setInputText] = useState('');
 
   const stats = useMemo(() => getStats(), [collection]);
@@ -148,10 +175,10 @@ export function TradesScreen() {
 
     const selecaoSet = new Set(parsed.entries.map(e => e.codigoFifa));
     const preview = `${parsed.entries.length} figurinhas encontradas em ${selecaoSet.size} seleção(ões)`;
-    const result = runComparison(parsed, selecoes, figurinhas, collection);
+    const result = runComparison(parsed, selecoes, figurinhas, collection, trackedTypes);
 
     return { result, parseError: null, preview };
-  }, [inputText, selecoes, figurinhas, collection]);
+  }, [inputText, selecoes, figurinhas, collection, trackedTypes]);
 
   function handleClearText() {
     setInputText('');
