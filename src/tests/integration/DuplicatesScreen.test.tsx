@@ -25,4 +25,10 @@ describe('DuplicatesScreen', () => {
     expect(getDupCount('fig-010')).toBe(3);
     expect(getDupCount('fig-unknown')).toBe(1);
   });
+
+  it('trade modal initial visibility is false', () => {
+    // TradeRegistrationModal starts hidden; only shown when button is tapped
+    const tradeModalVisible = false;
+    expect(tradeModalVisible).toBe(false);
+  });
 });

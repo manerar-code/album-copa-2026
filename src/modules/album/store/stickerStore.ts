@@ -53,6 +53,7 @@ interface CatalogState {
   incrementDupCount: (figurinhaId: string) => Promise<void>;
   resetSticker: (figurinhaId: string) => Promise<void>;
   getDupCount: (figurinhaId: string) => number;
+  registerTrade: (sent: string[], received: string[]) => Promise<void>;
 
   // Computed helpers
   getStatus: (figurinhaId: string) => StickerStatus;
@@ -274,6 +275,81 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
 
   getDupCount: (figurinhaId: string): number => {
     return get().quantities[figurinhaId] ?? 1;
+  },
+
+  registerTrade: async (sent: string[], received: string[]) => {
+    const { collection, quantities, activeUserAlbumId, allCollections, syncUserId } = get();
+    const previousCollection = collection;
+    const previousQuantities = quantities;
+
+    const newCollection: UserCollection = { ...collection };
+    const newQuantities: Record<string, number> = { ...quantities };
+    const changed: Array<{ figurinhaId: string; status: StickerStatus }> = [];
+
+    for (const figurinhaId of sent) {
+      if ((newCollection[figurinhaId] ?? 'missing') !== 'duplicate') continue;
+      const qty = newQuantities[figurinhaId] ?? 1;
+      if (qty >= 2) {
+        newQuantities[figurinhaId] = qty - 1;
+        changed.push({ figurinhaId, status: 'duplicate' });
+      } else {
+        newCollection[figurinhaId] = 'owned';
+        delete newQuantities[figurinhaId];
+        changed.push({ figurinhaId, status: 'owned' });
+      }
+    }
+
+    for (const figurinhaId of received) {
+      if ((newCollection[figurinhaId] ?? 'missing') === 'owned') continue;
+      newCollection[figurinhaId] = 'owned';
+      delete newQuantities[figurinhaId];
+      changed.push({ figurinhaId, status: 'owned' });
+    }
+
+    set({
+      collection: newCollection,
+      quantities: newQuantities,
+      allCollections: activeUserAlbumId
+        ? { ...allCollections, [activeUserAlbumId]: newCollection }
+        : allCollections,
+    });
+
+    try {
+      if (activeUserAlbumId) {
+        await Promise.all([
+          collectionService.save(newCollection, activeUserAlbumId),
+          quantitiesService.save(newQuantities, activeUserAlbumId),
+        ]);
+      }
+    } catch (error) {
+      logger.error('registerTrade: local save failed — reverting', error);
+      set({
+        collection: previousCollection,
+        quantities: previousQuantities,
+        allCollections: activeUserAlbumId
+          ? { ...allCollections, [activeUserAlbumId]: previousCollection }
+          : allCollections,
+      });
+      return;
+    }
+
+    logger.log(`registerTrade: completed — ${sent.length} sent, ${received.length} received`);
+
+    const albumId = activeUserAlbumId;
+    const userId = syncUserId;
+    if (albumId && userId && changed.length > 0) {
+      if (useSyncStore.getState().status !== 'offline') {
+        try {
+          await Promise.all(
+            changed.map(({ figurinhaId, status }) =>
+              cloudCollectionService.upsertOne(albumId, figurinhaId, status, userId),
+            ),
+          );
+        } catch (syncError) {
+          logger.warn('registerTrade: cloud sync failed (will retry on reload)', syncError);
+        }
+      }
+    }
   },
 
   resetCollection: async () => {

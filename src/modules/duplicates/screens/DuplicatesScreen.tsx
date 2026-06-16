@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { useUserSettingsStore, isTypeTracked } from '@shared/store/userSettingsS
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
 import { GlassCard } from '@shared/components/GlassCard';
+import { TradeRegistrationModal } from '../components/TradeRegistrationModal';
 import { CromoCard } from '@shared/components/CromoCard';
 import { FlagImage } from '@shared/components/FlagImage';
 import {
@@ -29,6 +30,7 @@ export function DuplicatesScreen() {
   const { figurinhas, selecoes, collection, quantities, getDupCount, resetSticker, toggleSticker } =
     useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
+  const [tradeModalVisible, setTradeModalVisible] = useState(false);
 
   const sections = useMemo(() => {
     return selecoes
@@ -83,13 +85,28 @@ export function DuplicatesScreen() {
         subtitle={`${total} figurinhas · ${sections.length} seleções`}
       />
 
-      {total > 0 && (
-        <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-          <Text style={s.shareBtnText} numberOfLines={1}>
-            📲 Enviar repetidas no WhatsApp
+      <View style={s.actionRow}>
+        {total > 0 && (
+          <TouchableOpacity
+            style={[s.shareBtn, s.actionFlex]}
+            onPress={handleShare}
+            activeOpacity={0.8}
+          >
+            <Text style={s.shareBtnText} numberOfLines={1}>
+              📲 WhatsApp
+            </Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[s.tradeBtn, s.actionFlex]}
+          onPress={() => setTradeModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={s.tradeBtnText} numberOfLines={1}>
+            🤝 Registrar troca
           </Text>
         </TouchableOpacity>
-      )}
+      </View>
 
       <SectionList
         sections={sections}
@@ -150,6 +167,10 @@ export function DuplicatesScreen() {
           );
         }}
       />
+      <TradeRegistrationModal
+        visible={tradeModalVisible}
+        onClose={() => setTradeModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -191,14 +212,28 @@ const s = StyleSheet.create({
     justifyContent: 'flex-start',
   },
 
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  actionFlex: { flex: 1 },
   shareBtn: {
     backgroundColor: '#25D366',
     borderRadius: radius.glass,
     padding: spacing.md,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
     alignItems: 'center',
   },
-  shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  shareBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  tradeBtn: {
+    backgroundColor: colors.ink750,
+    borderRadius: radius.glass,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  tradeBtnText: { color: colors.goldSoft, fontSize: 14, fontWeight: '700' },
 });
