@@ -9,7 +9,6 @@ import {
   SafeAreaView,
   Share,
   Platform,
-  Alert,
 } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
@@ -155,10 +154,7 @@ export function TradesScreen() {
   }, [inputText, selecoes, figurinhas, collection]);
 
   function handleClearText() {
-    Alert.alert('Apagar lista?', 'Todo o texto será removido.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Apagar', style: 'destructive', onPress: () => setInputText('') },
-    ]);
+    setInputText('');
   }
 
   async function handleShare() {

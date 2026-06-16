@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert, Share } from 'react-native';
+import { Share } from 'react-native';
 import { TradesScreen } from '@modules/trades/screens/TradesScreen';
 import type { Selecao, Figurinha } from '@shared/types';
 
@@ -155,13 +155,11 @@ describe('TradesScreen — unified inline screen', () => {
     expect(getByText(/Limpar/)).toBeTruthy();
   });
 
-  it('✕ Limpar button triggers Alert.alert with "Apagar lista?" title', () => {
-    const alertSpy = jest.spyOn(Alert, 'alert');
-    const { getByLabelText, getByText } = setup();
+  it('✕ Limpar button clears the input text directly', () => {
+    const { getByLabelText, getByText, queryByText } = setup();
     fireEvent.changeText(getByLabelText('Lista de repetidas'), 'BRA01');
     fireEvent.press(getByText(/Limpar/));
-    expect(alertSpy).toHaveBeenCalledWith('Apagar lista?', expect.any(String), expect.any(Array));
-    alertSpy.mockRestore();
+    expect(queryByText(/Limpar/)).toBeNull();
   });
 
   it('pasting "URU01 BRA07" renders section headers without pressing any button', async () => {
