@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 title: Update `DuplicatesScreen` with live quantity and share
 type: frontend
 complexity: medium

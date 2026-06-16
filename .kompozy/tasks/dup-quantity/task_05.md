@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 title: Wire `onPressDupBadge` in `StickerCard` and album screens
 type: frontend
 complexity: low
