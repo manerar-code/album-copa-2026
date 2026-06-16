@@ -32,12 +32,21 @@ export const StickerCard = React.memo(function StickerCard({
   pos,
   width,
 }: StickerCardProps) {
-  const { toggleSticker, getCrossAlbumDuplicateSources, setStatus, userAlbums } = useStickerStore(
+  const {
+    toggleSticker,
+    getCrossAlbumDuplicateSources,
+    setStatus,
+    userAlbums,
+    resetSticker,
+    getDupCount,
+  } = useStickerStore(
     useShallow(s => ({
       toggleSticker: s.toggleSticker,
       getCrossAlbumDuplicateSources: s.getCrossAlbumDuplicateSources,
       setStatus: s.setStatus,
       userAlbums: s.userAlbums,
+      resetSticker: s.resetSticker,
+      getDupCount: s.getDupCount,
     })),
   );
 
@@ -91,6 +100,8 @@ export const StickerCard = React.memo(function StickerCard({
     setStatus,
     crossAlbumSources,
     userAlbums,
+    resetSticker,
+    getDupCount,
   ]);
 
   const card = (
@@ -105,6 +116,8 @@ export const StickerCard = React.memo(function StickerCard({
       state={status}
       width={width}
       onPress={handlePress}
+      dupCount={status === 'duplicate' ? getDupCount(figurinhaId) : undefined}
+      onPressDupBadge={status === 'duplicate' ? () => resetSticker(figurinhaId) : undefined}
       accessibilityLabel={`Figurinha ${numero}${descricao ? ` ${descricao}` : ''}, estado: ${status}`}
       accessibilityRole="button"
       accessibilityHint="Toque para alterar o estado da figurinha"

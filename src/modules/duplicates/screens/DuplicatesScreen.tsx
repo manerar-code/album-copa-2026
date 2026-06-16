@@ -26,7 +26,7 @@ import {
 } from '@core/theme';
 
 export function DuplicatesScreen() {
-  const { figurinhas, selecoes, collection } = useStickerStore();
+  const { figurinhas, selecoes, collection, getDupCount, resetSticker } = useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
 
   const sections = useMemo(() => {
@@ -39,13 +39,14 @@ export function DuplicatesScreen() {
           const matchesType = isTypeTracked(trackedTypes, f.type);
           return isDuplicate && matchesSelecao && matchesType;
         });
+        const count = duplicates.reduce((acc, f) => acc + getDupCount(f.id), 0);
         return {
           title: selecao.nome,
           codigoFifa,
           bandeiraUrl: selecao.bandeira_url,
           flag: teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴',
           tc: teamColors[codigoFifa] ?? defaultTeamColors,
-          count: duplicates.length,
+          count,
           data: duplicates,
         };
       })
@@ -56,7 +57,13 @@ export function DuplicatesScreen() {
 
   const handleShare = async () => {
     const teamLines = sections.map(s => {
-      const stickers = s.data.map(f => `  ${f.numero} · ${f.nome}`).join('\n');
+      const stickers = s.data
+        .map(f => {
+          const qty = getDupCount(f.id);
+          const suffix = qty > 1 ? ` ×${qty}` : '';
+          return `  ${f.numero}${suffix} · ${f.nome}`;
+        })
+        .join('\n');
       return `${s.flag} ${s.title}\n${stickers}`;
     });
     const message = [
@@ -132,7 +139,8 @@ export function DuplicatesScreen() {
                   f1={section.tc.f1}
                   f2={section.tc.f2}
                   state="duplicate"
-                  dupCount={2}
+                  dupCount={getDupCount(f.id)}
+                  onPressDupBadge={() => resetSticker(f.id)}
                   width={96}
                 />
               ))}
