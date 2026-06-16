@@ -1,4 +1,4 @@
-import { getFlagEmoji } from '@shared/utils/flagEmoji';
+import { teamFlagEmoji } from '@core/theme';
 import type { Selecao, Figurinha } from '@shared/types';
 
 interface TradeMatch {
@@ -17,7 +17,7 @@ export function formatTradeResult(matches: TradeMatch[], albumName: string): str
   let totalCount = 0;
 
   for (const { selecao, figurinhas } of matches) {
-    const flag = getFlagEmoji(selecao.codigo_fifa);
+    const flag = teamFlagEmoji[selecao.codigo_fifa.toUpperCase()] ?? '';
     const label = flag ? `${flag} ${selecao.nome}` : selecao.nome;
     const numbers = figurinhas.map(f => f.numero).join(', ');
     lines.push(`${label}: ${numbers}`);
