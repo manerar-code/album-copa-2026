@@ -1,14 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { parseTradeList } from '@modules/trades/utils/parseTradeList';
@@ -73,57 +64,52 @@ export function TradeRegistrationModal({ visible, onClose }: TradeRegistrationMo
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={handleClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={s.kavWrapper}
-        >
-          <TouchableOpacity activeOpacity={1} style={s.sheet}>
-            <Text style={s.title}>🤝 Registrar troca</Text>
+        <TouchableOpacity activeOpacity={1} style={s.sheet}>
+          <Text style={s.title}>🤝 Registrar troca</Text>
 
-            <Text style={s.label}>Enviei</Text>
-            <TextInput
-              style={s.input}
-              multiline
-              numberOfLines={4}
-              placeholder="Ex: BRA01 BRA02, URU: 1, 2"
-              placeholderTextColor={colors.txFaint}
-              value={sentText}
-              onChangeText={t => setSentText(t.toUpperCase())}
-              textAlignVertical="top"
+          <Text style={s.label}>Enviei</Text>
+          <TextInput
+            style={s.input}
+            multiline
+            numberOfLines={4}
+            placeholder="Ex: BRA01 BRA02, URU: 1, 2"
+            placeholderTextColor={colors.txFaint}
+            value={sentText}
+            onChangeText={t => setSentText(t.toUpperCase())}
+            textAlignVertical="top"
+          />
+
+          <Text style={s.label}>Recebi</Text>
+          <TextInput
+            style={s.input}
+            multiline
+            numberOfLines={4}
+            placeholder="Ex: ARG03 FRA: 7, 8"
+            placeholderTextColor={colors.txFaint}
+            value={recebidoText}
+            onChangeText={t => setRecebidoText(t.toUpperCase())}
+            textAlignVertical="top"
+          />
+
+          {hasSummary && (
+            <Text style={s.summary}>
+              {sentIds.length} enviadas · {receivedIds.length} recebidas
+            </Text>
+          )}
+
+          <View style={s.actions}>
+            <TouchableOpacity style={s.cancelBtn} onPress={handleClose} disabled={saving}>
+              <Text style={s.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <GoldButton
+              label="Confirmar"
+              onPress={handleConfirm}
+              loading={saving}
+              disabled={!canConfirm}
+              style={s.confirmBtn}
             />
-
-            <Text style={s.label}>Recebi</Text>
-            <TextInput
-              style={s.input}
-              multiline
-              numberOfLines={4}
-              placeholder="Ex: ARG03 FRA: 7, 8"
-              placeholderTextColor={colors.txFaint}
-              value={recebidoText}
-              onChangeText={t => setRecebidoText(t.toUpperCase())}
-              textAlignVertical="top"
-            />
-
-            {hasSummary && (
-              <Text style={s.summary}>
-                {sentIds.length} enviadas · {receivedIds.length} recebidas
-              </Text>
-            )}
-
-            <View style={s.actions}>
-              <TouchableOpacity style={s.cancelBtn} onPress={handleClose} disabled={saving}>
-                <Text style={s.cancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <GoldButton
-                label="Confirmar"
-                onPress={handleConfirm}
-                loading={saving}
-                disabled={!canConfirm}
-                style={s.confirmBtn}
-              />
-            </View>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
+          </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
   );
@@ -134,9 +120,6 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
-  },
-  kavWrapper: {
-    width: '100%',
   },
   sheet: {
     backgroundColor: colors.ink800,

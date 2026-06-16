@@ -22,12 +22,13 @@ const URU: Selecao = {
 
 const selecoes: Selecao[] = [BRA, URU];
 
+// DB stores numero as "{codigoFifa}{number}" (e.g. "BRA1", "URU1")
 const figurinhas: Figurinha[] = [
   {
     id: 'fig-bra-1',
     album_id: 'album-1',
     selecao_id: 'sel-bra',
-    numero: '1',
+    numero: 'BRA1',
     nome: 'Neymar',
     type: 'player',
     descricao: '',
@@ -37,7 +38,7 @@ const figurinhas: Figurinha[] = [
     id: 'fig-bra-2',
     album_id: 'album-1',
     selecao_id: 'sel-bra',
-    numero: '2',
+    numero: 'BRA2',
     nome: 'Vinicius',
     type: 'player',
     descricao: '',
@@ -47,7 +48,7 @@ const figurinhas: Figurinha[] = [
     id: 'fig-uru-1',
     album_id: 'album-1',
     selecao_id: 'sel-uru',
-    numero: '1',
+    numero: 'URU1',
     nome: 'Suarez',
     type: 'player',
     descricao: '',
@@ -78,15 +79,17 @@ describe('resolveEntries', () => {
     expect(resolveEntries(entries, figurinhas, selecoes)).toEqual([]);
   });
 
-  it('resolves "01" (leading zero) to the same sticker as "1"', () => {
+  it('does not match if numero has a leading zero — parseTradeList is responsible for stripping', () => {
+    // parseTradeList guarantees numero has no leading zeros; '01' arrives as '1'
+    // if '01' somehow reaches resolveEntries, it produces 'BRA01' which has no DB match
     const entries: ParsedEntry[] = [{ codigoFifa: 'BRA', numero: '01' }];
-    expect(resolveEntries(entries, figurinhas, selecoes)).toEqual(['fig-bra-1']);
+    expect(resolveEntries(entries, figurinhas, selecoes)).toEqual([]);
   });
 
   it('deduplicates: two entries pointing to the same sticker yield one ID', () => {
     const entries: ParsedEntry[] = [
       { codigoFifa: 'BRA', numero: '1' },
-      { codigoFifa: 'BRA', numero: '01' },
+      { codigoFifa: 'BRA', numero: '1' },
     ];
     expect(resolveEntries(entries, figurinhas, selecoes)).toEqual(['fig-bra-1']);
   });

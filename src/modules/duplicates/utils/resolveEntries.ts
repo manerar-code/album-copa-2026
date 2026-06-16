@@ -13,12 +13,10 @@ export function resolveEntries(
     selecaoByFifa.set(sel.codigo_fifa.toUpperCase(), sel.id);
   }
 
+  // DB stores numero as "{codigoFifa}{number}" (e.g. "BRA1", "ARG10")
   const figurinhaByKey = new Map<string, string>();
   for (const fig of figurinhas) {
-    const n = parseInt(fig.numero, 10);
-    if (!isNaN(n)) {
-      figurinhaByKey.set(`${fig.selecao_id}:${n}`, fig.id);
-    }
+    figurinhaByKey.set(`${fig.selecao_id}:${fig.numero}`, fig.id);
   }
 
   const result: string[] = [];
@@ -28,10 +26,8 @@ export function resolveEntries(
     const selecaoId = selecaoByFifa.get(entry.codigoFifa.toUpperCase());
     if (!selecaoId) continue;
 
-    const n = parseInt(entry.numero, 10);
-    if (isNaN(n)) continue;
-
-    const figurinhaId = figurinhaByKey.get(`${selecaoId}:${n}`);
+    const expectedNumero = `${entry.codigoFifa.toUpperCase()}${entry.numero}`;
+    const figurinhaId = figurinhaByKey.get(`${selecaoId}:${expectedNumero}`);
     if (!figurinhaId) continue;
 
     if (!seen.has(figurinhaId)) {
