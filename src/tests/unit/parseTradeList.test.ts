@@ -145,6 +145,47 @@ describe('parseTradeList', () => {
     });
   });
 
+  describe('conjunction "e" as number separator', () => {
+    it('BRA: 9 e 11 → [{BRA,9}, {BRA,11}]', () => {
+      const result = parseTradeList('BRA: 9 e 11');
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries).toContainEqual({ codigoFifa: 'BRA', numero: '9' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'BRA', numero: '11' });
+    });
+
+    it('CRO: 4, 17 e 20 → [{CRO,4}, {CRO,17}, {CRO,20}]', () => {
+      const result = parseTradeList('CRO: 4, 17 e 20');
+      expect(result.entries).toHaveLength(3);
+      expect(result.entries.map(e => e.numero)).toEqual(['4', '17', '20']);
+    });
+
+    it('uppercase E (as typed in modal): BRA: 9 E 11 → 2 entries', () => {
+      const result = parseTradeList('BRA: 9 E 11');
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries).toContainEqual({ codigoFifa: 'BRA', numero: '9' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'BRA', numero: '11' });
+    });
+
+    it('multiple "e" separators: URU: 1 e 3 e 5 → 3 entries', () => {
+      const result = parseTradeList('URU: 1 e 3 e 5');
+      expect(result.entries).toHaveLength(3);
+      expect(result.entries.map(e => e.numero)).toEqual(['1', '3', '5']);
+    });
+
+    it('does not affect FIFA prefix starting with E: ESP: 1, 2 → 2 entries', () => {
+      const result = parseTradeList('ESP: 1, 2');
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries[0]).toEqual({ codigoFifa: 'ESP', numero: '1' });
+    });
+
+    it('mixed sections with "e": BRA: 9 e 11 CRO: 4, 17 e 20 → 5 entries', () => {
+      const result = parseTradeList('BRA: 9 e 11 CRO: 4, 17 e 20');
+      expect(result.entries).toHaveLength(5);
+      expect(result.entries.filter(e => e.codigoFifa === 'BRA')).toHaveLength(2);
+      expect(result.entries.filter(e => e.codigoFifa === 'CRO')).toHaveLength(3);
+    });
+  });
+
   describe('mixed formats', () => {
     it('mixed formats in same text: URU01 bra: 3, 4 → 3 entries for URU and BRA', () => {
       const result = parseTradeList('URU01 bra: 3, 4');

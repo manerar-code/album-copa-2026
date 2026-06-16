@@ -15,6 +15,11 @@ function stripLeadingZeros(num: string): string {
 }
 
 export function parseTradeList(text: string): ParseResult {
+  // Normalize Portuguese conjunction "e"/"E" used as number separator
+  // e.g. "BRA: 9 e 11" → "BRA: 9, 11" — requires whitespace on both sides to avoid
+  // matching FIFA prefixes like "ESP" or "ECU"
+  const normalizedText = text.replace(/\s+[Ee]\s+/g, ', ');
+
   const rawEntries: ParsedEntry[] = [];
 
   // Track character ranges consumed by Pass 1 to avoid double-counting in Pass 2
@@ -24,7 +29,7 @@ export function parseTradeList(text: string): ParseResult {
   const pass1Regex = /([A-Za-z]{2,4})\s*:\s*([\d][,;\s\d]*)/g;
   let match: RegExpExecArray | null;
 
-  while ((match = pass1Regex.exec(text)) !== null) {
+  while ((match = pass1Regex.exec(normalizedText)) !== null) {
     const prefix = match[1].toUpperCase();
     const numberBlock = match[2];
     const rangeStart = match.index;
@@ -40,7 +45,7 @@ export function parseTradeList(text: string): ParseResult {
   // Pass 2 — concatenated format: PREFIX01 or PREFIX-01
   const pass2Regex = /([A-Za-z]{2,4})-?(\d+)/g;
 
-  while ((match = pass2Regex.exec(text)) !== null) {
+  while ((match = pass2Regex.exec(normalizedText)) !== null) {
     const spanStart = match.index;
     const spanEnd = match.index + match[0].length;
 
@@ -63,7 +68,7 @@ export function parseTradeList(text: string): ParseResult {
   }
 
   // hasNoPrefix: no prefixed entries found AND input contains digits
-  const hasNoPrefix = entries.length === 0 && /\d/.test(text);
+  const hasNoPrefix = entries.length === 0 && /\d/.test(normalizedText);
 
   return { entries, hasNoPrefix, unresolvableCount: 0 };
 }
