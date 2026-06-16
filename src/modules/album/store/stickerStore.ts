@@ -287,15 +287,24 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     const changed: Array<{ figurinhaId: string; status: StickerStatus }> = [];
 
     for (const figurinhaId of sent) {
-      if ((newCollection[figurinhaId] ?? 'missing') !== 'duplicate') continue;
-      const qty = newQuantities[figurinhaId] ?? 1;
-      if (qty >= 2) {
-        newQuantities[figurinhaId] = qty - 1;
-        changed.push({ figurinhaId, status: 'duplicate' });
-      } else {
-        newCollection[figurinhaId] = 'owned';
+      const currentStatus = newCollection[figurinhaId] ?? 'missing';
+      if (currentStatus === 'missing') continue;
+
+      if (currentStatus === 'duplicate') {
+        const qty = newQuantities[figurinhaId] ?? 1;
+        const remaining = qty - 1;
+        if (remaining >= 2) {
+          newQuantities[figurinhaId] = remaining;
+          changed.push({ figurinhaId, status: 'duplicate' });
+        } else {
+          newCollection[figurinhaId] = 'owned';
+          delete newQuantities[figurinhaId];
+          changed.push({ figurinhaId, status: 'owned' });
+        }
+      } else if (currentStatus === 'owned') {
+        newCollection[figurinhaId] = 'missing';
         delete newQuantities[figurinhaId];
-        changed.push({ figurinhaId, status: 'owned' });
+        changed.push({ figurinhaId, status: 'missing' });
       }
     }
 

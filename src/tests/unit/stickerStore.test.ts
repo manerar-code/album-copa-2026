@@ -364,4 +364,72 @@ describe('stickerStore', () => {
       expect(mockUpsertOne).not.toHaveBeenCalled();
     });
   });
+
+  describe('registerTrade', () => {
+    beforeEach(() => {
+      useStickerStore.setState({
+        activeUserAlbumId: 'album-1',
+        syncUserId: 'user-1',
+        collection: {},
+        quantities: {},
+      });
+    });
+
+    it('duplicate qty=3 sent one → remains duplicate qty=2', async () => {
+      useStickerStore.setState({
+        collection: { 'fig-a': 'duplicate' },
+        quantities: { 'fig-a': 3 },
+      });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade(['fig-a'], []));
+      expect(result.current.collection['fig-a']).toBe('duplicate');
+      expect(result.current.quantities['fig-a']).toBe(2);
+    });
+
+    it('duplicate qty=2 sent one → transitions to owned (qty removed)', async () => {
+      useStickerStore.setState({
+        collection: { 'fig-a': 'duplicate' },
+        quantities: { 'fig-a': 2 },
+      });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade(['fig-a'], []));
+      expect(result.current.collection['fig-a']).toBe('owned');
+      expect(result.current.quantities['fig-a']).toBeUndefined();
+    });
+
+    it('duplicate qty=1 (no quantity entry) sent one → transitions to owned', async () => {
+      useStickerStore.setState({ collection: { 'fig-a': 'duplicate' }, quantities: {} });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade(['fig-a'], []));
+      expect(result.current.collection['fig-a']).toBe('owned');
+    });
+
+    it('owned sent one → transitions to missing', async () => {
+      useStickerStore.setState({ collection: { 'fig-a': 'owned' }, quantities: {} });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade(['fig-a'], []));
+      expect(result.current.collection['fig-a']).toBe('missing');
+    });
+
+    it('missing sent → no change (cannot send what you do not have)', async () => {
+      useStickerStore.setState({ collection: { 'fig-a': 'missing' }, quantities: {} });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade(['fig-a'], []));
+      expect(result.current.collection['fig-a']).toBe('missing');
+    });
+
+    it('received missing → becomes owned', async () => {
+      useStickerStore.setState({ collection: {}, quantities: {} });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade([], ['fig-b']));
+      expect(result.current.collection['fig-b']).toBe('owned');
+    });
+
+    it('received owned → no change', async () => {
+      useStickerStore.setState({ collection: { 'fig-b': 'owned' }, quantities: {} });
+      const { result } = renderHook(() => useStickerStore());
+      await act(() => result.current.registerTrade([], ['fig-b']));
+      expect(result.current.collection['fig-b']).toBe('owned');
+    });
+  });
 });
