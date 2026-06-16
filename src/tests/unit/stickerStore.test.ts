@@ -1,11 +1,13 @@
 import { act, renderHook } from '@testing-library/react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { collectionService } from '@shared/services/collectionService';
+import { quantitiesService } from '@shared/services/quantitiesService';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { offlineQueueService } from '@shared/services/offlineQueueService';
 import { useSyncStore } from '@shared/store/syncStore';
 
 jest.mock('@shared/services/collectionService');
+jest.mock('@shared/services/quantitiesService');
 jest.mock('@shared/services/cloudCollectionService', () => ({
   cloudCollectionService: { upsertOne: jest.fn() },
 }));
@@ -16,6 +18,9 @@ jest.mock('@shared/services/offlineQueueService', () => ({
 const mockSave = collectionService.save as jest.Mock;
 const mockLoad = collectionService.load as jest.Mock;
 const mockReset = collectionService.reset as jest.Mock;
+const mockQtySave = quantitiesService.save as jest.Mock;
+const mockQtyLoad = quantitiesService.load as jest.Mock;
+const mockQtyReset = quantitiesService.reset as jest.Mock;
 const mockUpsertOne = cloudCollectionService.upsertOne as jest.Mock;
 const mockEnqueue = offlineQueueService.enqueue as jest.Mock;
 
@@ -24,11 +29,15 @@ beforeEach(() => {
   mockLoad.mockResolvedValue({});
   mockSave.mockResolvedValue(undefined);
   mockReset.mockResolvedValue(undefined);
+  mockQtyLoad.mockResolvedValue({});
+  mockQtySave.mockResolvedValue(undefined);
+  mockQtyReset.mockResolvedValue(undefined);
   mockUpsertOne.mockResolvedValue(undefined);
   mockEnqueue.mockResolvedValue(undefined);
   useSyncStore.setState({ status: 'synced', pendingCount: 0 });
   useStickerStore.setState({
     collection: {},
+    quantities: {},
     figurinhas: [],
     selecoes: [],
     album: null,
@@ -156,7 +165,7 @@ describe('stickerStore', () => {
     expect(result.current.getStatus('any-id')).toBe('missing');
   });
 
-  it('toggleSticker cycles missing → owned → duplicate → missing', async () => {
+  it('toggleSticker cycles missing → owned → duplicate, then increments on duplicate', async () => {
     const { result } = renderHook(() => useStickerStore());
     const id = 'sticker-001';
 
@@ -169,20 +178,36 @@ describe('stickerStore', () => {
       await result.current.toggleSticker(id);
     });
     expect(result.current.getStatus(id)).toBe('duplicate');
+    expect(result.current.getDupCount(id)).toBe(1);
 
+    // When already duplicate, tap increments instead of cycling to missing
     await act(async () => {
       await result.current.toggleSticker(id);
     });
-    expect(result.current.getStatus(id)).toBe('missing');
+    expect(result.current.getStatus(id)).toBe('duplicate');
+    expect(result.current.getDupCount(id)).toBe(2);
   });
 
-  it('persists to storage on every toggle', async () => {
+  it('persists collection to storage on toggle when cycling (missing→owned→duplicate)', async () => {
+    useStickerStore.setState({ activeUserAlbumId: 'album-1' });
     const { result } = renderHook(() => useStickerStore());
     await act(async () => {
       await result.current.toggleSticker('001');
     });
     expect(mockSave).toHaveBeenCalledTimes(1);
-    expect(mockSave).toHaveBeenCalledWith({ '001': 'owned' });
+    expect(mockSave).toHaveBeenCalledWith({ '001': 'owned' }, 'album-1');
+  });
+
+  it('persists quantities to storage when incrementing duplicate', async () => {
+    const { result } = renderHook(() => useStickerStore());
+    useStickerStore.setState({ activeUserAlbumId: 'album-1', collection: { '001': 'duplicate' } });
+
+    await act(async () => {
+      await result.current.toggleSticker('001');
+    });
+    // When already duplicate, increments and saves quantities
+    expect(mockQtySave).toHaveBeenCalled();
+    expect(result.current.getDupCount('001')).toBe(2);
   });
 
   it('loadCollection reads from storage', async () => {
@@ -198,28 +223,61 @@ describe('stickerStore', () => {
   it('getStats returns correct counts', () => {
     useStickerStore.setState({
       figurinhas: [
-        { id: '1', album_id: 'a', selecao_id: 's', numero: '001', descricao: '', ordem: 1 },
-        { id: '2', album_id: 'a', selecao_id: 's', numero: '002', descricao: '', ordem: 2 },
-        { id: '3', album_id: 'a', selecao_id: 's', numero: '003', descricao: '', ordem: 3 },
+        {
+          id: '1',
+          album_id: 'a',
+          selecao_id: 's',
+          numero: '001',
+          descricao: '',
+          ordem: 1,
+          nome: 'Player1',
+          type: 'Player',
+        },
+        {
+          id: '2',
+          album_id: 'a',
+          selecao_id: 's',
+          numero: '002',
+          descricao: '',
+          ordem: 2,
+          nome: 'Player2',
+          type: 'Player',
+        },
+        {
+          id: '3',
+          album_id: 'a',
+          selecao_id: 's',
+          numero: '003',
+          descricao: '',
+          ordem: 3,
+          nome: 'Player3',
+          type: 'Player',
+        },
       ],
       collection: { '1': 'owned', '2': 'duplicate' },
     });
     const { result } = renderHook(() => useStickerStore());
     const stats = result.current.getStats();
     expect(stats.total).toBe(3);
-    expect(stats.owned).toBe(1);
+    expect(stats.owned).toBe(2); // owned + duplicate together
     expect(stats.duplicate).toBe(1);
     expect(stats.missing).toBe(1);
   });
 
-  it('resetCollection clears collection and storage', async () => {
-    useStickerStore.setState({ collection: { '1': 'owned' } });
+  it('resetCollection clears collection, quantities and storage', async () => {
+    useStickerStore.setState({
+      collection: { '1': 'owned' },
+      quantities: { '2': 3 },
+      activeUserAlbumId: 'album-1',
+    });
     const { result } = renderHook(() => useStickerStore());
     await act(async () => {
       await result.current.resetCollection();
     });
     expect(result.current.collection).toEqual({});
+    expect(result.current.quantities).toEqual({});
     expect(mockReset).toHaveBeenCalledTimes(1);
+    expect(mockQtyReset).toHaveBeenCalledTimes(1);
   });
 
   describe('offline-aware toggleSticker', () => {
@@ -287,16 +345,21 @@ describe('stickerStore', () => {
       });
     });
 
-    it('when offline and status becomes missing, does NOT enqueue', async () => {
+    it('when offline and already duplicate, increments count (does NOT enqueue or upsert)', async () => {
       useSyncStore.setState({ status: 'offline' });
-      useStickerStore.setState({ collection: { 'fig-001': 'duplicate' } });
+      useStickerStore.setState({
+        collection: { 'fig-001': 'duplicate' },
+        activeUserAlbumId: 'album-1',
+      });
       const { result } = renderHook(() => useStickerStore());
 
       await act(async () => {
         await result.current.toggleSticker('fig-001');
       });
 
-      expect(result.current.getStatus('fig-001')).toBe('missing');
+      // When already duplicate, increments instead of cycling to missing
+      expect(result.current.getStatus('fig-001')).toBe('duplicate');
+      expect(result.current.getDupCount('fig-001')).toBe(2);
       expect(mockEnqueue).not.toHaveBeenCalled();
       expect(mockUpsertOne).not.toHaveBeenCalled();
     });

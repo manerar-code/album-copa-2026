@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { collectionService } from '@shared/services/collectionService';
+import { quantitiesService } from '@shared/services/quantitiesService';
 import { cloudCollectionService } from '@shared/services/cloudCollectionService';
 import { offlineQueueService } from '@shared/services/offlineQueueService';
 import { useSyncStore } from '@shared/store/syncStore';
@@ -24,6 +25,7 @@ interface CatalogState {
   selecoes: Selecao[];
   figurinhas: Figurinha[];
   collection: UserCollection;
+  quantities: Record<string, number>;
   // Todas as coleções do usuário (para indicador de troca entre álbuns)
   allCollections: Record<string, UserCollection>; // userAlbumId → collection
   userAlbums: UserAlbum[];
@@ -48,6 +50,9 @@ interface CatalogState {
   toggleSticker: (figurinhaId: string) => Promise<void>;
   setStatus: (figurinhaId: string, status: StickerStatus, targetAlbumId?: string) => Promise<void>;
   resetCollection: () => Promise<void>;
+  incrementDupCount: (figurinhaId: string) => Promise<void>;
+  resetSticker: (figurinhaId: string) => Promise<void>;
+  getDupCount: (figurinhaId: string) => number;
 
   // Computed helpers
   getStatus: (figurinhaId: string) => StickerStatus;
@@ -64,6 +69,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
   selecoes: [],
   figurinhas: [],
   collection: {},
+  quantities: {},
   allCollections: {},
   userAlbums: [],
   activeUserAlbumId: null,
@@ -83,9 +89,12 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
 
   loadCollection: async (userAlbumId: string) => {
     try {
-      const collection = await collectionService.load(userAlbumId);
-      set({ collection });
-      logger.log('Collection loaded from storage');
+      const [collection, quantities] = await Promise.all([
+        collectionService.load(userAlbumId),
+        quantitiesService.load(userAlbumId),
+      ]);
+      set({ collection, quantities });
+      logger.log('Collection and quantities loaded from storage');
     } catch (error) {
       logger.error('Failed to load collection:', error);
     }
@@ -110,8 +119,15 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
 
   toggleSticker: async (figurinhaId: string) => {
     const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
-    const previousCollection = collection;
     const current = collection[figurinhaId] ?? 'missing';
+
+    // When already duplicate, increment count instead of cycling to missing (ADR-001)
+    if (current === 'duplicate') {
+      get().incrementDupCount(figurinhaId);
+      return;
+    }
+
+    const previousCollection = collection;
     const next = STATUS_CYCLE[current];
     const updated = { ...collection, [figurinhaId]: next };
     set({
@@ -196,25 +212,84 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     }
   },
 
+  incrementDupCount: async (figurinhaId: string) => {
+    const { quantities, activeUserAlbumId } = get();
+    const current = quantities[figurinhaId] ?? 1;
+    const updated = { ...quantities, [figurinhaId]: current + 1 };
+    set({ quantities: updated });
+
+    try {
+      if (activeUserAlbumId) await quantitiesService.save(updated, activeUserAlbumId);
+    } catch (error) {
+      logger.error('incrementDupCount: local save failed — reverting', error);
+      set({ quantities });
+    }
+  },
+
+  resetSticker: async (figurinhaId: string) => {
+    const { collection, quantities, activeUserAlbumId, allCollections } = get();
+    const previousCollection = collection;
+    const previousQuantities = quantities;
+
+    const updated = { ...collection, [figurinhaId]: 'missing' } as UserCollection;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [figurinhaId]: _, ...updatedQuantities } = quantities;
+
+    set({
+      collection: updated,
+      quantities: updatedQuantities as Record<string, number>,
+      allCollections: activeUserAlbumId
+        ? { ...allCollections, [activeUserAlbumId]: updated }
+        : allCollections,
+    });
+
+    try {
+      if (activeUserAlbumId) {
+        await Promise.all([
+          collectionService.save(updated, activeUserAlbumId),
+          quantitiesService.save(updatedQuantities as Record<string, number>, activeUserAlbumId),
+        ]);
+      }
+    } catch (error) {
+      logger.error('resetSticker: local save failed — reverting', error);
+      set({ collection: previousCollection, quantities: previousQuantities });
+    }
+  },
+
+  getDupCount: (figurinhaId: string): number => {
+    return get().quantities[figurinhaId] ?? 1;
+  },
+
   resetCollection: async () => {
-    const { collection, activeUserAlbumId, allCollections, syncUserId } = get();
+    const { collection, quantities, activeUserAlbumId, allCollections, syncUserId } = get();
     // Snapshot for rollback
     const previousCollection = collection;
+    const previousQuantities = quantities;
     const previousAllCollections = allCollections;
     set({
       collection: {},
+      quantities: {},
       allCollections: activeUserAlbumId
         ? { ...allCollections, [activeUserAlbumId]: {} }
         : allCollections,
     });
     try {
-      if (activeUserAlbumId) await collectionService.reset(activeUserAlbumId);
+      if (activeUserAlbumId) {
+        await Promise.all([
+          collectionService.reset(activeUserAlbumId),
+          quantitiesService.reset(activeUserAlbumId),
+        ]);
+      }
       if (activeUserAlbumId && syncUserId) {
         await cloudCollectionService.replaceAll(activeUserAlbumId, {}, syncUserId);
       }
     } catch (error) {
       logger.error('Failed to reset collection:', error);
-      set({ collection: previousCollection, allCollections: previousAllCollections });
+      set({
+        collection: previousCollection,
+        quantities: previousQuantities,
+        allCollections: previousAllCollections,
+      });
     }
   },
 

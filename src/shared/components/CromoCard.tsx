@@ -20,6 +20,8 @@ export interface CromoCardProps {
   /** Card width in px — height = w × 1.31 */
   width?: number;
   onPress?: () => void;
+  /** Called when duplicate badge is tapped */
+  onPressDupBadge?: () => void;
 }
 
 const W_DEFAULT = 72;
@@ -35,6 +37,7 @@ export const CromoCard = React.memo(function CromoCard({
   dupCount = 0,
   width = W_DEFAULT,
   onPress,
+  onPressDupBadge,
 }: CromoCardProps) {
   const h = Math.round(width * 1.31);
   const isMissing = state === 'missing';
@@ -137,16 +140,28 @@ export const CromoCard = React.memo(function CromoCard({
     >
       {inner}
       {/* Duplicate badge ×N */}
-      {dupCount > 1 && (
-        <LinearGradient
-          colors={[colors.goldSoft, colors.gold]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={s.dupBadge}
-        >
-          <Text style={[s.dupBadgeText, { fontSize: width * 0.11 }]}>×{dupCount}</Text>
-        </LinearGradient>
-      )}
+      {dupCount > 1 &&
+        (onPressDupBadge ? (
+          <TouchableOpacity onPress={onPressDupBadge} activeOpacity={0.75}>
+            <LinearGradient
+              colors={[colors.goldSoft, colors.gold]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={s.dupBadge}
+            >
+              <Text style={[s.dupBadgeText, { fontSize: width * 0.11 }]}>×{dupCount}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          <LinearGradient
+            colors={[colors.goldSoft, colors.gold]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={s.dupBadge}
+          >
+            <Text style={[s.dupBadgeText, { fontSize: width * 0.11 }]}>×{dupCount}</Text>
+          </LinearGradient>
+        ))}
     </LinearGradient>
   ) : (
     /* owned — plain View, green border, no check icon */
