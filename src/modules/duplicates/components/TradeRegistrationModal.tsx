@@ -51,7 +51,12 @@ export function TradeRegistrationModal({ visible, onClose }: TradeRegistrationMo
     [recebidoText, figurinhas, selecoes],
   );
 
-  const canConfirm = sentIds.length > 0 || receivedIds.length > 0;
+  const canConfirm = useMemo(
+    () =>
+      parseTradeList(sentText).entries.length > 0 ||
+      parseTradeList(recebidoText).entries.length > 0,
+    [sentText, recebidoText],
+  );
   const hasSummary = sentText.trim().length > 0 || recebidoText.trim().length > 0;
 
   const handleConfirm = async () => {
