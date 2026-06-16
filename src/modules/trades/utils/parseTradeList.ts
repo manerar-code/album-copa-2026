@@ -15,10 +15,17 @@ function stripLeadingZeros(num: string): string {
 }
 
 export function parseTradeList(text: string): ParseResult {
-  // Normalize Portuguese conjunction "e"/"E" used as number separator
-  // e.g. "BRA: 9 e 11" → "BRA: 9, 11" — requires whitespace on both sides to avoid
-  // matching FIFA prefixes like "ESP" or "ECU"
-  const normalizedText = text.replace(/\s+[Ee]\s+/g, ', ');
+  const normalizedText = text
+    // Strip Unicode tag sequences (U+E0000-U+E007F) from subdivision flag emojis
+    // e.g. Scotland 󠁧󠁢󠁳󠁣󠁴󠁿 / England 󠁧󠁢󠁥󠁮󠁧󠁿 — invisible chars that appear between ":" and the number in pasted text
+    .replace(/\u{E0000}/gu, '')
+    .replace(/[\u{E0001}-\u{E007F}]/gu, '')
+    // Replace remaining non-ASCII characters (emoji, symbols) with a space
+    // eslint-disable-next-line no-control-regex
+    .replace(/[^\x00-\x7F]/g, ' ')
+    // Normalize Portuguese conjunction "e"/"E" as number separator
+    // e.g. "BRA: 9 e 11" → "BRA: 9, 11" — requires whitespace on both sides
+    .replace(/\s+[Ee]\s+/g, ', ');
 
   const rawEntries: ParsedEntry[] = [];
 
@@ -37,7 +44,7 @@ export function parseTradeList(text: string): ParseResult {
     }
   }
 
-  // Pass 0b — CC concatenated format: CC-LAM10  (must run before Pass 2 to avoid "LAM10" being parsed as {LAM,10})
+  // Pass 0b — CC concatenated format: CC-LAM10  (must run before Pass 2 to avoid "LAM10" → {LAM,10})
   const pass0ConcatRegex = /(CC-[A-Za-z]{1,4})(\d+)/gi;
   while ((match = pass0ConcatRegex.exec(normalizedText)) !== null) {
     const spanStart = match.index;
@@ -48,8 +55,9 @@ export function parseTradeList(text: string): ParseResult {
     rawEntries.push({ codigoFifa: match[1].toUpperCase(), numero: stripLeadingZeros(match[2]) });
   }
 
-  // Pass 1 — section block format: PREFIX: 1, 2, 3
-  const pass1Regex = /([A-Za-z]{2,4})\s*:\s*([\d][,;\s\d]*)/g;
+  // Pass 1 — section block format: "PREFIX: 1, 2, 3" or "PREFIX 1, 2, 3" (colon optional)
+  // Colon-optional handles formats like "DEU 5, 9 e 16" (common in WhatsApp lists)
+  const pass1Regex = /([A-Za-z]{2,4})\s*:?\s*([\d][,;\s\d]*)/g;
 
   while ((match = pass1Regex.exec(normalizedText)) !== null) {
     const rangeStart = match.index;
@@ -76,7 +84,7 @@ export function parseTradeList(text: string): ParseResult {
     const spanStart = match.index;
     const spanEnd = match.index + match[0].length;
 
-    // Skip spans already consumed by Pass 1
+    // Skip spans already consumed by earlier passes
     const overlaps = consumedRanges.some(([s, e]) => spanStart < e && spanEnd > s);
     if (overlaps) continue;
 

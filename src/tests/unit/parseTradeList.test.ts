@@ -185,6 +185,48 @@ describe('parseTradeList', () => {
     });
   });
 
+  describe('flag emoji and non-ASCII stripping', () => {
+    it('strips subdivision tag sequences from "SCO: <flag> 11" → [{SCO,11}]', () => {
+      // Tag sequence chars U+E0067 U+E0062 U+E0073 U+E0063 U+E0074 U+E007F (Scotland flag)
+      const flagTags = '\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}';
+      const result = parseTradeList(`SCO: ${flagTags} 11`);
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0]).toEqual({ codigoFifa: 'SCO', numero: '11' });
+    });
+
+    it('strips England flag tags from "ENG: <flag> 12 e 14" → [{ENG,12},{ENG,14}]', () => {
+      const flagTags = '\u{E0065}\u{E006E}\u{E0067}\u{E007F}';
+      const result = parseTradeList(`ENG: ${flagTags} 12 e 14`);
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries).toContainEqual({ codigoFifa: 'ENG', numero: '12' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'ENG', numero: '14' });
+    });
+
+    it('replaces regular emoji with space — does not break adjacent tokens', () => {
+      // e.g. "🇧🇷 BRA: 9" — regional indicator emoji before prefix
+      const result = parseTradeList('🇧🇷 BRA: 9');
+      expect(result.entries).toHaveLength(1);
+      expect(result.entries[0]).toEqual({ codigoFifa: 'BRA', numero: '9' });
+    });
+  });
+
+  describe('section format without colon (DEU 5, 9 e 16)', () => {
+    it('DEU 5, 9 e 16 → [{DEU,5},{DEU,9},{DEU,16}]', () => {
+      const result = parseTradeList('DEU 5, 9 e 16');
+      expect(result.entries).toHaveLength(3);
+      expect(result.entries).toContainEqual({ codigoFifa: 'DEU', numero: '5' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'DEU', numero: '9' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'DEU', numero: '16' });
+    });
+
+    it('colon still works when present: DEU: 5, 9 → same result', () => {
+      const result = parseTradeList('DEU: 5, 9');
+      expect(result.entries).toHaveLength(2);
+      expect(result.entries).toContainEqual({ codigoFifa: 'DEU', numero: '5' });
+      expect(result.entries).toContainEqual({ codigoFifa: 'DEU', numero: '9' });
+    });
+  });
+
   describe('conjunction "e" as number separator', () => {
     it('BRA: 9 e 11 → [{BRA,9}, {BRA,11}]', () => {
       const result = parseTradeList('BRA: 9 e 11');
