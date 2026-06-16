@@ -19,7 +19,7 @@ describe('DuplicatesScreen', () => {
   });
 
   it('getDupCount returns quantity from store', () => {
-    const quantities = { 'fig-007': 2, 'fig-010': 3 };
+    const quantities: Record<string, number> = { 'fig-007': 2, 'fig-010': 3 };
     const getDupCount = (id: string) => quantities[id] ?? 1;
     expect(getDupCount('fig-007')).toBe(2);
     expect(getDupCount('fig-010')).toBe(3);

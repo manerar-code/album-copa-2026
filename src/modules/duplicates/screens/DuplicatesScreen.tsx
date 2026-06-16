@@ -26,7 +26,7 @@ import {
 } from '@core/theme';
 
 export function DuplicatesScreen() {
-  const { figurinhas, selecoes, collection, getDupCount, resetSticker, toggleSticker } =
+  const { figurinhas, selecoes, collection, quantities, getDupCount, resetSticker, toggleSticker } =
     useStickerStore();
   const { trackedTypes } = useUserSettingsStore();
 
@@ -52,7 +52,7 @@ export function DuplicatesScreen() {
         };
       })
       .filter(s => s.data.length > 0);
-  }, [figurinhas, selecoes, collection, trackedTypes]);
+  }, [figurinhas, selecoes, collection, quantities, trackedTypes]);
 
   const total = sections.reduce((acc, s) => acc + s.count, 0);
 

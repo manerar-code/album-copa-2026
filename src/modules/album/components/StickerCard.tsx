@@ -32,27 +32,22 @@ export const StickerCard = React.memo(function StickerCard({
   pos,
   width,
 }: StickerCardProps) {
-  const {
-    toggleSticker,
-    getCrossAlbumDuplicateSources,
-    setStatus,
-    userAlbums,
-    resetSticker,
-    getDupCount,
-  } = useStickerStore(
-    useShallow(s => ({
-      toggleSticker: s.toggleSticker,
-      getCrossAlbumDuplicateSources: s.getCrossAlbumDuplicateSources,
-      setStatus: s.setStatus,
-      userAlbums: s.userAlbums,
-      resetSticker: s.resetSticker,
-      getDupCount: s.getDupCount,
-    })),
-  );
+  const { toggleSticker, getCrossAlbumDuplicateSources, setStatus, userAlbums, resetSticker } =
+    useStickerStore(
+      useShallow(s => ({
+        toggleSticker: s.toggleSticker,
+        getCrossAlbumDuplicateSources: s.getCrossAlbumDuplicateSources,
+        setStatus: s.setStatus,
+        userAlbums: s.userAlbums,
+        resetSticker: s.resetSticker,
+      })),
+    );
 
   // Direct subscription to collection[figurinhaId] so the card re-renders on every status change.
   // Using getStatus (a stable fn ref) inside useShallow would NOT trigger re-renders.
   const status = useStickerStore(s => s.collection[figurinhaId] ?? 'missing');
+  // Direct subscription to quantities[figurinhaId] so the badge re-renders on every increment.
+  const dupCount = useStickerStore(s => s.quantities[figurinhaId] ?? 1);
   const crossAlbumSources = getCrossAlbumDuplicateSources(figurinhaId);
   const isCrossAlbumHighlighted = status === 'missing' && crossAlbumSources.length > 0;
   const flag = codigoFifa ? (teamFlagEmoji[codigoFifa.toUpperCase()] ?? '🏴') : '🏴';
@@ -101,7 +96,6 @@ export const StickerCard = React.memo(function StickerCard({
     crossAlbumSources,
     userAlbums,
     resetSticker,
-    getDupCount,
   ]);
 
   const card = (
@@ -116,7 +110,7 @@ export const StickerCard = React.memo(function StickerCard({
       state={status}
       width={width}
       onPress={handlePress}
-      dupCount={status === 'duplicate' ? getDupCount(figurinhaId) : undefined}
+      dupCount={status === 'duplicate' ? dupCount : undefined}
       onPressDupBadge={status === 'duplicate' ? () => resetSticker(figurinhaId) : undefined}
     />
   );
