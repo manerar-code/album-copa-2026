@@ -227,7 +227,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
   },
 
   resetSticker: async (figurinhaId: string) => {
-    const { collection, quantities, activeUserAlbumId, allCollections } = get();
+    const { collection, quantities, activeUserAlbumId, allCollections, syncUserId } = get();
     const previousCollection = collection;
     const previousQuantities = quantities;
 
@@ -253,6 +253,22 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     } catch (error) {
       logger.error('resetSticker: local save failed — reverting', error);
       set({ collection: previousCollection, quantities: previousQuantities });
+      return;
+    }
+
+    // Sincroniza remoção com a nuvem — sem isso, ao retornar ao app o merge
+    // cloud reverte 'missing' para 'duplicate' pois duplicate tem prioridade maior.
+    if (activeUserAlbumId && syncUserId) {
+      try {
+        await cloudCollectionService.upsertOne(
+          activeUserAlbumId,
+          figurinhaId,
+          'missing',
+          syncUserId,
+        );
+      } catch (syncError) {
+        logger.warn('resetSticker: cloud sync failed (will retry on reload)', syncError);
+      }
     }
   },
 
