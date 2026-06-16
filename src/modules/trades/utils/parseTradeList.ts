@@ -1,5 +1,3 @@
-import type { Selecao } from '@shared/types';
-
 export interface ParsedEntry {
   codigoFifa: string;
   numero: string;
@@ -16,10 +14,8 @@ function stripLeadingZeros(num: string): string {
   return stripped === '' ? '0' : stripped;
 }
 
-export function parseTradeList(text: string, selecoes: Selecao[]): ParseResult {
-  const allowlist = new Set(selecoes.map(s => s.codigo_fifa.toUpperCase()));
+export function parseTradeList(text: string): ParseResult {
   const rawEntries: ParsedEntry[] = [];
-  let unresolvableCount = 0;
 
   // Track character ranges consumed by Pass 1 to avoid double-counting in Pass 2
   const consumedRanges: Array<[number, number]> = [];
@@ -36,13 +32,8 @@ export function parseTradeList(text: string, selecoes: Selecao[]): ParseResult {
     consumedRanges.push([rangeStart, rangeEnd]);
 
     const numbers = numberBlock.split(/[,;\s]+/).filter(n => /^\d+$/.test(n));
-
-    if (allowlist.has(prefix)) {
-      for (const num of numbers) {
-        rawEntries.push({ codigoFifa: prefix, numero: stripLeadingZeros(num) });
-      }
-    } else {
-      unresolvableCount += numbers.length;
+    for (const num of numbers) {
+      rawEntries.push({ codigoFifa: prefix, numero: stripLeadingZeros(num) });
     }
   }
 
@@ -57,14 +48,7 @@ export function parseTradeList(text: string, selecoes: Selecao[]): ParseResult {
     const overlaps = consumedRanges.some(([s, e]) => spanStart < e && spanEnd > s);
     if (overlaps) continue;
 
-    const prefix = match[1].toUpperCase();
-    const num = match[2];
-
-    if (allowlist.has(prefix)) {
-      rawEntries.push({ codigoFifa: prefix, numero: stripLeadingZeros(num) });
-    } else {
-      unresolvableCount++;
-    }
+    rawEntries.push({ codigoFifa: match[1].toUpperCase(), numero: stripLeadingZeros(match[2]) });
   }
 
   // Deduplicate by (codigoFifa, numero)
@@ -78,8 +62,8 @@ export function parseTradeList(text: string, selecoes: Selecao[]): ParseResult {
     }
   }
 
-  // hasNoPrefix: no valid prefixed entries found AND input contains digits
+  // hasNoPrefix: no prefixed entries found AND input contains digits
   const hasNoPrefix = entries.length === 0 && /\d/.test(text);
 
-  return { entries, hasNoPrefix, unresolvableCount };
+  return { entries, hasNoPrefix, unresolvableCount: 0 };
 }

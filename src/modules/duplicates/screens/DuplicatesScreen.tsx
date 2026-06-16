@@ -57,7 +57,7 @@ export function DuplicatesScreen() {
   const handleShare = async () => {
     const teamLines = sections.map(s => {
       const stickers = s.data.map(f => `  ${f.numero} · ${f.nome}`).join('\n');
-      return `${s.title}\n${stickers}`;
+      return `${s.flag} ${s.title}\n${stickers}`;
     });
     const message = [
       '🔄 Minhas figurinhas repetidas — Álbum Copa 2026\n',

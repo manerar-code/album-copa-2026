@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Share } from 'react-native';
+import { Alert, Share } from 'react-native';
 import { TradesScreen } from '@modules/trades/screens/TradesScreen';
 import type { Selecao, Figurinha } from '@shared/types';
 
@@ -23,6 +23,19 @@ jest.mock('@shared/components/FlagImage', () => {
   const React = require('react');
   const { View } = require('react-native');
   return { FlagImage: () => React.createElement(View, null) };
+});
+
+jest.mock('@shared/components/CromoCard', () => {
+  const React = require('react');
+  const { View, Text } = require('react-native');
+  return {
+    CromoCard: ({ numero }: { numero: string }) =>
+      React.createElement(
+        View,
+        { testID: `cromo-${numero}` },
+        React.createElement(Text, null, numero),
+      ),
+  };
 });
 
 jest.mock('@shared/components/ScreenHeader', () => {
@@ -62,33 +75,45 @@ const FIG_URU_1: Figurinha = {
   id: 'fig-uru-1',
   album_id: 'album-1',
   selecao_id: 'sel-uru',
-  numero: '1',
+  numero: 'URU1',
   nome: 'Suárez',
   type: 'Player',
   descricao: '',
   ordem: 1,
 };
 
+const FIG_URU_2: Figurinha = {
+  id: 'fig-uru-2',
+  album_id: 'album-1',
+  selecao_id: 'sel-uru',
+  numero: 'URU2',
+  nome: 'Cavani',
+  type: 'Player',
+  descricao: '',
+  ordem: 2,
+};
+
 const FIG_BRA_7: Figurinha = {
   id: 'fig-bra-7',
   album_id: 'album-1',
   selecao_id: 'sel-bra',
-  numero: '7',
+  numero: 'BRA7',
   nome: 'Vinicius',
   type: 'Player',
   descricao: '',
   ordem: 1,
 };
 
-const ALL_SELECOES = [SELECAO_URU, SELECAO_BRA];
-const ALL_FIGURINHAS = [FIG_URU_1, FIG_BRA_7];
-
 function buildStore(overrides: Record<string, unknown> = {}) {
   return {
     album: { id: 'album-1', nome: 'Álbum Copa 2026', versao: 1 },
-    selecoes: ALL_SELECOES,
-    figurinhas: ALL_FIGURINHAS,
-    collection: { 'fig-uru-1': 'missing', 'fig-bra-7': 'missing' } as Record<string, string>,
+    selecoes: [SELECAO_URU, SELECAO_BRA],
+    figurinhas: [FIG_URU_1, FIG_URU_2, FIG_BRA_7],
+    collection: {
+      'fig-uru-1': 'missing',
+      'fig-uru-2': 'missing',
+      'fig-bra-7': 'missing',
+    } as Record<string, string>,
     allCollections: {},
     userAlbums: [],
     activeUserAlbumId: null,
@@ -98,7 +123,7 @@ function buildStore(overrides: Record<string, unknown> = {}) {
     setStatus: jest.fn(),
     resetCollection: jest.fn(),
     getStatus: jest.fn().mockReturnValue('missing'),
-    getStats: jest.fn().mockReturnValue({ total: 2, owned: 0, missing: 2, duplicate: 0 }),
+    getStats: jest.fn().mockReturnValue({ total: 3, owned: 0, missing: 3, duplicate: 0 }),
     getTradeSource: jest.fn().mockReturnValue(null),
     ...overrides,
   };
@@ -113,93 +138,95 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('TradesScreen — input state', () => {
-  it('renders TextInput with placeholder on initial load', () => {
+describe('TradesScreen — unified inline screen', () => {
+  it('renders TextInput with placeholder on mount', () => {
     const { getByLabelText } = setup();
     expect(getByLabelText('Lista de repetidas')).toBeTruthy();
   });
 
-  it('renders Comparar button', () => {
-    const { getByLabelText } = setup();
-    expect(getByLabelText('Comparar')).toBeTruthy();
+  it('✕ Limpar button is absent when input is empty', () => {
+    const { queryByText } = setup();
+    expect(queryByText(/Limpar/)).toBeNull();
   });
 
-  it('Comparar button is disabled when TextInput is empty', () => {
-    const { getByLabelText } = setup();
-    const btn = getByLabelText('Comparar');
-    expect(btn.props.accessibilityState?.disabled ?? btn.props.disabled).toBe(true);
-  });
-
-  it('shows hasNoPrefix error when pasting numbers without country prefix', () => {
+  it('✕ Limpar button appears when input has text', () => {
     const { getByLabelText, getByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'BRA01');
+    expect(getByText(/Limpar/)).toBeTruthy();
+  });
+
+  it('✕ Limpar button triggers Alert.alert with "Apagar lista?" title', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const { getByLabelText, getByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'BRA01');
+    fireEvent.press(getByText(/Limpar/));
+    expect(alertSpy).toHaveBeenCalledWith('Apagar lista?', expect.any(String), expect.any(Array));
+    alertSpy.mockRestore();
+  });
+
+  it('pasting "URU01 BRA07" renders section headers without pressing any button', async () => {
+    const { getByLabelText, getByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01 BRA07');
+    await waitFor(() => {
+      expect(getByText('Uruguai')).toBeTruthy();
+      expect(getByText('Brasil')).toBeTruthy();
+    });
+  });
+
+  it('pasting "1;2;10" shows parseError box; no section headers rendered', () => {
+    const { getByLabelText, getByText, queryByText } = setup();
     fireEvent.changeText(getByLabelText('Lista de repetidas'), '1;2;10');
-    fireEvent.press(getByLabelText('Comparar'));
     expect(getByText(/Nenhum código de país encontrado/)).toBeTruthy();
+    expect(queryByText('Uruguai')).toBeNull();
   });
 
-  it('does not transition to result state when hasNoPrefix error occurs', () => {
-    const { getByLabelText, queryByText } = setup();
-    fireEvent.changeText(getByLabelText('Lista de repetidas'), '1 2 3');
-    fireEvent.press(getByLabelText('Comparar'));
-    expect(queryByText('Nova comparação')).toBeNull();
-  });
-
-  it('shows album completo message when user has zero missing stickers', () => {
-    const { getByText } = setup({
-      getStats: jest.fn().mockReturnValue({ total: 2, owned: 2, missing: 0, duplicate: 0 }),
-    });
-    expect(getByText(/álbum completo/i)).toBeTruthy();
-  });
-});
-
-describe('TradesScreen — comparison result', () => {
-  it('valid prefixed input transitions to result view with matching stickers', async () => {
-    const { getByLabelText, getByText } = setup();
-    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01 BRA07');
-    fireEvent.press(getByLabelText('Comparar'));
-    await waitFor(() => {
-      expect(getByText('Nova comparação')).toBeTruthy();
-    });
-    expect(getByText(/2 figurinhas/)).toBeTruthy();
-  });
-
-  it('shows sticker numbers in result grouped by team', async () => {
+  it('pasting codes for stickers all owned shows empty state and informadas list', async () => {
     const { getByLabelText, getByText } = setup({
-      collection: { 'fig-uru-1': 'missing' },
-      figurinhas: [FIG_URU_1],
-    });
-    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
-    fireEvent.press(getByLabelText('Comparar'));
-    await waitFor(() => {
-      expect(getByText('1')).toBeTruthy();
-    });
-  });
-
-  it('shows empty state when intersection is empty (friend has stickers user already owns)', async () => {
-    const { getByLabelText, getByText } = setup({
-      collection: { 'fig-uru-1': 'owned', 'fig-bra-7': 'owned' },
+      collection: { 'fig-uru-1': 'owned', 'fig-uru-2': 'owned', 'fig-bra-7': 'owned' },
     });
     fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01 BRA07');
-    fireEvent.press(getByLabelText('Comparar'));
     await waitFor(() => {
       expect(getByText(/Nenhuma figurinha em comum/)).toBeTruthy();
+      expect(getByText(/Figurinhas informadas/)).toBeTruthy();
+      expect(getByText('Uruguai')).toBeTruthy();
     });
   });
 
-  it('tap "Nova comparação" resets screen to input state', async () => {
+  it('section header shows team name and sticker count', async () => {
     const { getByLabelText, getByText } = setup();
     fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
-    fireEvent.press(getByLabelText('Comparar'));
-    await waitFor(() => expect(getByText('Nova comparação')).toBeTruthy());
-    fireEvent.press(getByText('Nova comparação'));
-    await waitFor(() => expect(getByLabelText('Lista de repetidas')).toBeTruthy());
+    await waitFor(() => {
+      expect(getByText('Uruguai')).toBeTruthy();
+      expect(getByText('1 fig.')).toBeTruthy();
+    });
   });
 
-  it('tap "Enviar pelo WhatsApp" calls Share.share with a message string', async () => {
+  it('CromoCard rendered for each matching sticker at renderItem index 0', async () => {
+    const { getByLabelText, getByTestId } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01 URU02');
+    await waitFor(() => {
+      expect(getByTestId('cromo-URU1')).toBeTruthy();
+      expect(getByTestId('cromo-URU2')).toBeTruthy();
+    });
+  });
+
+  it('WhatsApp share button absent when input is empty', () => {
+    const { queryByText } = setup();
+    expect(queryByText(/Enviar pelo WhatsApp/)).toBeNull();
+  });
+
+  it('WhatsApp share button appears when there are matching stickers', async () => {
+    const { getByLabelText, getByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
+    await waitFor(() => {
+      expect(getByText('📲 Enviar pelo WhatsApp')).toBeTruthy();
+    });
+  });
+
+  it('pressing WhatsApp share calls Share.share with message containing team FIFA code', async () => {
     const shareSpy = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
     const { getByLabelText, getByText } = setup();
     fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
-    fireEvent.press(getByLabelText('Comparar'));
     await waitFor(() => expect(getByText('📲 Enviar pelo WhatsApp')).toBeTruthy());
     fireEvent.press(getByText('📲 Enviar pelo WhatsApp'));
     await waitFor(() => {
@@ -210,47 +237,51 @@ describe('TradesScreen — comparison result', () => {
     shareSpy.mockRestore();
   });
 
-  it('sticker number not in catalog (figurinha not found) is silently skipped', async () => {
-    const { getByLabelText, getByText } = setup({
-      figurinhas: [FIG_URU_1], // only URU1 — BRA99 does not exist
-      collection: { 'fig-uru-1': 'missing' },
-    });
-    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01 BRA99');
-    fireEvent.press(getByLabelText('Comparar'));
-    await waitFor(() => expect(getByText('Nova comparação')).toBeTruthy());
-    // URU01 matched, BRA99 was skipped — result has 1 figurinha
-    expect(getByText(/1 figurinha/)).toBeTruthy();
+  it('clearing input text removes all section headers', async () => {
+    const { getByLabelText, getByText, queryByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
+    await waitFor(() => expect(getByText('Uruguai')).toBeTruthy());
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), '');
+    expect(queryByText('Uruguai')).toBeNull();
   });
 
-  it('multiple figurinhas in one section renders correctly (renderItem index branches)', async () => {
-    const FIG_URU_2: Figurinha = {
-      id: 'fig-uru-2',
-      album_id: 'album-1',
-      selecao_id: 'sel-uru',
-      numero: '2',
-      nome: 'Cavani',
-      type: 'Player',
-      descricao: '',
-      ordem: 2,
-    };
-    const { getByLabelText, getByText } = setup({
-      figurinhas: [FIG_URU_1, FIG_URU_2],
-      collection: { 'fig-uru-1': 'missing', 'fig-uru-2': 'missing' },
+  it('album complete info box visible when stats.missing === 0', () => {
+    const { getByText } = setup({
+      getStats: jest.fn().mockReturnValue({ total: 3, owned: 3, missing: 0, duplicate: 0 }),
     });
-    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01 URU02');
-    fireEvent.press(getByLabelText('Comparar'));
-    await waitFor(() => expect(getByText('Nova comparação')).toBeTruthy());
-    expect(getByText(/2 figurinhas/)).toBeTruthy();
+    expect(getByText(/álbum completo/i)).toBeTruthy();
   });
 
-  it('collection state is never modified during any interaction', async () => {
+  it('collection state is never mutated during any interaction', async () => {
     const store = buildStore();
     (useStickerStore as unknown as jest.Mock).mockReturnValue(store);
     const { getByLabelText } = render(<TradesScreen />);
     fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
-    fireEvent.press(getByLabelText('Comparar'));
     await waitFor(() => {});
     expect(store.toggleSticker).not.toHaveBeenCalled();
     expect(store.setStatus).not.toHaveBeenCalled();
+  });
+
+  it('preview text "figurinhas encontradas" appears when valid codes are detected', async () => {
+    const { getByLabelText, getByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'URU01');
+    await waitFor(() => {
+      expect(getByText(/figurinhas encontradas/)).toBeTruthy();
+    });
+  });
+
+  it('empty input shows no sections, no parseError, and no empty state', () => {
+    const { queryByText } = setup();
+    expect(queryByText('Uruguai')).toBeNull();
+    expect(queryByText(/Nenhum código/)).toBeNull();
+    expect(queryByText(/Nenhuma figurinha em comum/)).toBeNull();
+  });
+
+  it('unknown FIFA code (XYZ01) in input is silently skipped — no sections, no error', async () => {
+    const { getByLabelText, queryByText } = setup();
+    fireEvent.changeText(getByLabelText('Lista de repetidas'), 'XYZ01');
+    await waitFor(() => {});
+    expect(queryByText('Uruguai')).toBeNull();
+    expect(queryByText(/Nenhum código/)).toBeNull();
   });
 });

@@ -8,49 +8,59 @@ import {
   StyleSheet,
   SafeAreaView,
   Share,
-  ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { ScreenHeader } from '@shared/components/ScreenHeader';
 import { EmptyState } from '@shared/components/EmptyState';
 import { FlagImage } from '@shared/components/FlagImage';
-import { colors, fonts, spacing, radius } from '@core/theme';
+import { CromoCard } from '@shared/components/CromoCard';
+import {
+  colors,
+  fonts,
+  spacing,
+  radius,
+  teamFlagEmoji,
+  teamColors,
+  defaultTeamColors,
+} from '@core/theme';
 import { parseTradeList } from '../utils/parseTradeList';
 import { formatTradeResult } from '../utils/formatTradeResult';
 import type { Figurinha, Selecao } from '@shared/types';
-
-type ViewState = 'input' | 'result';
+import type { ParseResult } from '../utils/parseTradeList';
 
 interface TradeSection {
   title: string;
   codigoFifa: string;
   bandeira_url: string;
+  flag: string;
+  tc: { f1: string; f2: string };
   data: Figurinha[];
 }
 
 interface ComparisonResult {
   sections: TradeSection[];
+  allSections: TradeSection[];
   totalCount: number;
   parsedCount: number;
   catalogMissCount: number;
 }
 
-function stripZeros(num: string): string {
-  const s = num.replace(/^0+/, '');
-  return s === '' ? '0' : s;
+interface TradeState {
+  result: ComparisonResult | null;
+  parseError: string | null;
+  preview: string | null;
 }
 
 function runComparison(
-  inputText: string,
+  parseResult: ParseResult,
   selecoes: Selecao[],
   figurinhas: Figurinha[],
   collection: Record<string, string>,
 ): ComparisonResult | null {
-  const parseResult = parseTradeList(inputText, selecoes);
-  if (parseResult.hasNoPrefix || parseResult.entries.length === 0) return null;
-
-  const sectionMap = new Map<string, { selecao: Selecao; figurinhas: Figurinha[] }>();
+  const tradeMap = new Map<string, { selecao: Selecao; figurinhas: Figurinha[] }>();
+  const allMap = new Map<string, { selecao: Selecao; figurinhas: Figurinha[] }>();
   let catalogMissCount = 0;
 
   for (const entry of parseResult.entries) {
@@ -62,8 +72,10 @@ function runComparison(
       continue;
     }
 
+    // DB stores numero as "{codigoFifa}{number}" (e.g. "BRA1", "BRA10")
+    const expectedNumero = `${entry.codigoFifa}${entry.numero}`;
     const figurinha = figurinhas.find(
-      f => f.selecao_id === selecao.id && stripZeros(f.numero) === stripZeros(entry.numero),
+      f => f.selecao_id === selecao.id && f.numero === expectedNumero,
     );
 
     if (!figurinha) {
@@ -71,28 +83,40 @@ function runComparison(
       continue;
     }
 
+    if (!allMap.has(selecao.id)) {
+      allMap.set(selecao.id, { selecao, figurinhas: [] });
+    }
+    allMap.get(selecao.id)!.figurinhas.push(figurinha);
+
     const status = collection[figurinha.id] ?? 'missing';
     if (status !== 'missing') continue;
 
-    if (!sectionMap.has(selecao.id)) {
-      sectionMap.set(selecao.id, { selecao, figurinhas: [] });
+    if (!tradeMap.has(selecao.id)) {
+      tradeMap.set(selecao.id, { selecao, figurinhas: [] });
     }
-    sectionMap.get(selecao.id)!.figurinhas.push(figurinha);
+    tradeMap.get(selecao.id)!.figurinhas.push(figurinha);
   }
 
-  const sections: TradeSection[] = Array.from(sectionMap.values()).map(
-    ({ selecao, figurinhas: figs }) => ({
+  function buildSections(
+    map: Map<string, { selecao: Selecao; figurinhas: Figurinha[] }>,
+  ): TradeSection[] {
+    return Array.from(map.values()).map(({ selecao, figurinhas: figs }) => ({
       title: selecao.nome,
       codigoFifa: selecao.codigo_fifa,
       bandeira_url: selecao.bandeira_url,
+      flag: teamFlagEmoji[selecao.codigo_fifa.toUpperCase()] ?? '🏴',
+      tc: teamColors[selecao.codigo_fifa] ?? defaultTeamColors,
       data: figs,
-    }),
-  );
+    }));
+  }
 
+  const sections = buildSections(tradeMap);
+  const allSections = buildSections(allMap);
   const totalCount = sections.reduce((acc, s) => acc + s.data.length, 0);
 
   return {
     sections,
+    allSections,
     totalCount,
     parsedCount: parseResult.entries.length,
     catalogMissCount,
@@ -101,181 +125,201 @@ function runComparison(
 
 export function TradesScreen() {
   const { selecoes, figurinhas, collection, album, getStats } = useStickerStore();
-  const [viewState, setViewState] = useState<ViewState>('input');
   const [inputText, setInputText] = useState('');
-  const [parseError, setParseError] = useState<string | null>(null);
-  const [result, setResult] = useState<ComparisonResult | null>(null);
 
   const stats = useMemo(() => getStats(), [collection]);
   const albumName = album?.nome ?? 'Álbum Copa 2026';
 
-  const parsePreview = useMemo(() => {
-    if (!inputText.trim()) return null;
-    const parsed = parseTradeList(inputText, selecoes);
-    if (parsed.hasNoPrefix) return null;
-    if (parsed.entries.length === 0) return null;
-    const selecaoSet = new Set(parsed.entries.map(e => e.codigoFifa));
-    return `${parsed.entries.length} figurinhas encontradas em ${selecaoSet.size} seleção(ões)`;
-  }, [inputText, selecoes]);
+  const tradeState = useMemo<TradeState | null>(() => {
+    const text = inputText.trim();
+    if (!text) return null;
 
-  function handleComparar() {
-    const parsed = parseTradeList(inputText, selecoes);
+    const parsed = parseTradeList(text);
 
     if (parsed.hasNoPrefix) {
-      setParseError(
-        'Nenhum código de país encontrado. Peça ao seu amigo para enviar a lista com o código da seleção (ex: BRA01, URU: 1, 2).',
-      );
-      return;
+      return {
+        result: null,
+        parseError:
+          'Nenhum código de país encontrado. Peça ao seu amigo para enviar a lista com o código da seleção (ex: BRA01, URU: 1, 2).',
+        preview: null,
+      };
     }
 
-    if (parsed.entries.length === 0) {
-      setParseError('Nenhuma figurinha reconhecida. Verifique o formato da lista.');
-      return;
-    }
+    if (parsed.entries.length === 0) return null;
 
-    setParseError(null);
-    const comparison = runComparison(inputText, selecoes, figurinhas, collection);
-    setResult(comparison);
-    setViewState('result');
-  }
+    const selecaoSet = new Set(parsed.entries.map(e => e.codigoFifa));
+    const preview = `${parsed.entries.length} figurinhas encontradas em ${selecaoSet.size} seleção(ões)`;
+    const result = runComparison(parsed, selecoes, figurinhas, collection);
 
-  function handleReset() {
-    setInputText('');
-    setParseError(null);
-    setResult(null);
-    setViewState('input');
+    return { result, parseError: null, preview };
+  }, [inputText, selecoes, figurinhas, collection]);
+
+  function handleClearText() {
+    Alert.alert('Apagar lista?', 'Todo o texto será removido.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Apagar', style: 'destructive', onPress: () => setInputText('') },
+    ]);
   }
 
   async function handleShare() {
-    if (!result) return;
-    const matches = result.sections.map(s => ({
+    if (!tradeState?.result) return;
+    const matches = tradeState.result.sections.map(s => ({
       selecao: selecoes.find(sel => sel.codigo_fifa === s.codigoFifa)!,
       figurinhas: s.data,
     }));
-    const message = formatTradeResult(matches, albumName);
-    await Share.share({ message });
+    await Share.share({ message: formatTradeResult(matches, albumName) });
   }
 
-  if (viewState === 'result') {
-    const sections = result?.sections ?? [];
-    const totalCount = result?.totalCount ?? 0;
+  const sections = tradeState?.result?.sections ?? [];
+  const allSections = tradeState?.result?.allSections ?? [];
+  const totalCount = tradeState?.result?.totalCount ?? 0;
 
-    return (
-      <SafeAreaView style={s.safeArea}>
-        <ScreenHeader
-          title="🤝 Trocas"
-          subtitle={
-            totalCount > 0 ? `Você precisa de ${totalCount} figurinhas` : 'Nenhuma em comum'
-          }
-        />
-
-        {sections.length === 0 ? (
-          <ScrollView contentContainerStyle={s.emptyContainer}>
-            <EmptyState
-              emoji="🤷"
-              title="Nenhuma figurinha em comum"
-              subtitle="Tente com outra lista de repetidas."
-            />
-            <TouchableOpacity style={s.resetBtn} onPress={handleReset} activeOpacity={0.8}>
-              <Text style={s.resetBtnText}>Nova comparação</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        ) : (
-          <SectionList
-            sections={sections}
-            keyExtractor={item => item.id}
-            contentContainerStyle={s.list}
-            showsVerticalScrollIndicator={false}
-            renderSectionHeader={({ section }) => (
-              <View style={s.sectionHeader}>
-                <FlagImage
-                  codigoFifa={section.codigoFifa}
-                  bandeiraUrl={section.bandeira_url}
-                  size={20}
-                />
-                <Text style={s.sectionName}>{section.title}</Text>
-                <Text style={s.sectionCount}>{section.data.length} fig.</Text>
-              </View>
-            )}
-            renderItem={({ index, section }) => {
-              if (index !== 0) return null;
-              const numbers = section.data.map((f: Figurinha) => f.numero).join(', ');
-              return (
-                <View style={s.numberRow}>
-                  <Text style={s.numberText}>{numbers}</Text>
-                </View>
-              );
-            }}
-            ListFooterComponent={
-              <View style={s.footer}>
-                <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-                  <Text style={s.shareBtnText}>📲 Enviar pelo WhatsApp</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.resetBtn} onPress={handleReset} activeOpacity={0.8}>
-                  <Text style={s.resetBtnText}>Nova comparação</Text>
-                </TouchableOpacity>
-              </View>
-            }
-          />
+  const listHeader = (
+    <View>
+      {stats.missing === 0 && (
+        <View style={s.infoBox}>
+          <Text style={s.infoText}>
+            🏆 Você não tem nenhuma figurinha faltando — álbum completo!
+          </Text>
+        </View>
+      )}
+      <View style={s.labelRow}>
+        <Text style={s.label}>Lista de repetidas do amigo</Text>
+        {inputText.length > 0 && (
+          <TouchableOpacity onPress={handleClearText} activeOpacity={0.7}>
+            <Text style={s.clearBtnText}>✕ Limpar</Text>
+          </TouchableOpacity>
         )}
-      </SafeAreaView>
-    );
-  }
-
-  // Input view
-  const hasNoMissing = stats.missing === 0;
+      </View>
+      <TextInput
+        style={s.textInput}
+        multiline
+        numberOfLines={8}
+        placeholder="Cole aqui a lista de repetidas do seu amigo (ex: BRA01 BRA02, URU: 1, 2)"
+        placeholderTextColor={colors.txFaint}
+        value={inputText}
+        onChangeText={text => setInputText(text.toUpperCase())}
+        textAlignVertical="top"
+        accessibilityLabel="Lista de repetidas"
+      />
+      {tradeState?.preview && <Text style={s.preview}>✓ {tradeState.preview}</Text>}
+      {tradeState?.parseError && (
+        <View style={s.errorBox}>
+          <Text style={s.errorText}>{tradeState.parseError}</Text>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={s.safeArea}>
-      <ScreenHeader title="🤝 Trocas" subtitle="Cole a lista de repetidas do amigo" />
-
-      <ScrollView contentContainerStyle={s.inputContainer} keyboardShouldPersistTaps="handled">
-        {hasNoMissing && (
-          <View style={s.infoBox}>
-            <Text style={s.infoText}>
-              🏆 Você não tem nenhuma figurinha faltando — álbum completo!
-            </Text>
+      <ScreenHeader
+        title="🤝 Trocas"
+        subtitle={
+          totalCount > 0
+            ? `Você precisa de ${totalCount} figurinha${totalCount !== 1 ? 's' : ''}`
+            : 'Cole a lista de repetidas do amigo'
+        }
+      />
+      <SectionList
+        sections={sections}
+        keyExtractor={item => item.id}
+        contentContainerStyle={s.list}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={
+          totalCount > 0 ? (
+            <View style={s.footer}>
+              <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+                <Text style={s.shareBtnText}>📲 Enviar pelo WhatsApp</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          tradeState !== null && tradeState.result !== null ? (
+            <View>
+              <EmptyState
+                emoji="🤷"
+                title="Nenhuma figurinha em comum"
+                subtitle="Você já tem todas as figurinhas da lista do seu amigo."
+              />
+              {allSections.length > 0 && (
+                <View style={s.informadasBlock}>
+                  <Text style={s.informadasTitle}>
+                    Figurinhas informadas ({allSections.reduce((acc, s) => acc + s.data.length, 0)})
+                  </Text>
+                  {allSections.map(section => (
+                    <View key={section.codigoFifa}>
+                      <View style={s.sectionHeader}>
+                        <FlagImage
+                          codigoFifa={section.codigoFifa}
+                          bandeiraUrl={section.bandeira_url}
+                          size={20}
+                        />
+                        <Text style={s.sectionName}>{section.title}</Text>
+                        <Text style={s.sectionCount}>{section.data.length} fig.</Text>
+                      </View>
+                      <View style={s.cromoGrid}>
+                        {section.data.map(f => (
+                          <CromoCard
+                            key={f.id}
+                            numero={f.numero}
+                            descricao={f.descricao}
+                            flag={section.flag}
+                            f1={section.tc.f1}
+                            f2={section.tc.f2}
+                            state="owned"
+                            width={96}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null
+        }
+        renderSectionHeader={({ section }) => (
+          <View style={s.sectionHeader}>
+            <FlagImage
+              codigoFifa={section.codigoFifa}
+              bandeiraUrl={section.bandeira_url}
+              size={20}
+            />
+            <Text style={s.sectionName}>{section.title}</Text>
+            <Text style={s.sectionCount}>{section.data.length} fig.</Text>
           </View>
         )}
-
-        <Text style={s.label}>Lista de repetidas do amigo</Text>
-        <TextInput
-          style={s.textInput}
-          multiline
-          numberOfLines={8}
-          placeholder="Cole aqui a lista de repetidas do seu amigo (ex: BRA01 BRA02, URU: 1, 2)"
-          placeholderTextColor={colors.txFaint}
-          value={inputText}
-          onChangeText={setInputText}
-          textAlignVertical="top"
-          accessibilityLabel="Lista de repetidas"
-        />
-
-        {parsePreview && !parseError && <Text style={s.preview}>✓ {parsePreview}</Text>}
-
-        {parseError && (
-          <View style={s.errorBox}>
-            <Text style={s.errorText}>{parseError}</Text>
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={[s.compareBtn, !inputText.trim() && s.compareBtnDisabled]}
-          onPress={handleComparar}
-          activeOpacity={0.8}
-          disabled={!inputText.trim()}
-          accessibilityLabel="Comparar"
-        >
-          <Text style={s.compareBtnText}>Comparar</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        renderItem={({ index, section }) => {
+          if (index !== 0) return null;
+          return (
+            <View style={s.cromoGrid}>
+              {section.data.map(f => (
+                <CromoCard
+                  key={f.id}
+                  numero={f.numero}
+                  descricao={f.descricao}
+                  flag={section.flag}
+                  f1={section.tc.f1}
+                  f2={section.tc.f2}
+                  state="missing"
+                  width={96}
+                />
+              ))}
+            </View>
+          );
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.ink900 },
-  inputContainer: { padding: spacing.md, flexGrow: 1 },
+  list: { padding: spacing.md, flexGrow: 1 },
 
   infoBox: {
     backgroundColor: colors.glass,
@@ -285,14 +329,20 @@ const s = StyleSheet.create({
   },
   infoText: { color: colors.goldSoft, fontFamily: fonts.bodySemiBold, fontSize: 13 },
 
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
   label: {
     color: colors.txMut,
     fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  clearBtnText: { color: colors.error, fontFamily: fonts.body, fontSize: 12 },
 
   textInput: {
     backgroundColor: colors.ink800,
@@ -307,12 +357,7 @@ const s = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
-  preview: {
-    color: colors.green,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    marginBottom: spacing.sm,
-  },
+  preview: { color: colors.green, fontFamily: fonts.body, fontSize: 12, marginBottom: spacing.sm },
 
   errorBox: {
     backgroundColor: 'rgba(255,93,82,0.12)',
@@ -321,21 +366,6 @@ const s = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   errorText: { color: '#FF5D52', fontFamily: fonts.body, fontSize: 13, lineHeight: 19 },
-
-  compareBtn: {
-    backgroundColor: colors.gold,
-    borderRadius: radius.glass,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  compareBtnDisabled: { opacity: 0.4 },
-  compareBtnText: { color: colors.ink900, fontFamily: fonts.bodyBold, fontSize: 15 },
-
-  // Result view
-  emptyContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: spacing.md, flexGrow: 1 },
-  footer: { marginTop: spacing.md, gap: spacing.sm },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -347,14 +377,25 @@ const s = StyleSheet.create({
   sectionName: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.tx, flex: 1 },
   sectionCount: { fontFamily: fonts.mono, fontSize: 10, color: colors.txFaint },
 
-  numberRow: {
-    backgroundColor: colors.ink800,
-    borderRadius: radius.glass,
-    padding: spacing.md,
+  cromoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    marginBottom: spacing.md,
+    justifyContent: 'flex-start',
+  },
+
+  informadasBlock: { marginTop: spacing.lg },
+  informadasTitle: {
+    color: colors.txMut,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: spacing.sm,
   },
-  numberText: { fontFamily: fonts.mono, fontSize: 13, color: colors.txMut, lineHeight: 20 },
 
+  footer: { marginTop: spacing.md },
   shareBtn: {
     backgroundColor: '#25D366',
     borderRadius: radius.glass,
@@ -362,14 +403,4 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   shareBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-
-  resetBtn: {
-    backgroundColor: colors.glass,
-    borderRadius: radius.glass,
-    padding: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  resetBtnText: { color: colors.txMut, fontFamily: fonts.bodySemiBold, fontSize: 14 },
 });
