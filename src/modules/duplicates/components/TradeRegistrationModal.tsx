@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import { useStickerStore } from '@modules/album/store/stickerStore';
 import { parseTradeList } from '@modules/trades/utils/parseTradeList';
@@ -146,7 +146,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.ink750,
     color: colors.tx,
     fontFamily: fonts.mono,
-    fontSize: 13,
+    fontSize: Platform.OS === 'web' ? 16 : 13,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
