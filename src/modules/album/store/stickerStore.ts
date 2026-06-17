@@ -231,27 +231,39 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     const { collection, quantities, activeUserAlbumId, allCollections, syncUserId } = get();
     const previousCollection = collection;
     const previousQuantities = quantities;
+    const currentQty = quantities[figurinhaId] ?? 1;
 
-    // Remove o status de repetida mas mantém 'owned' — o usuário ainda tem a figurinha.
-    // Usar 'missing' aqui é errado: o badge ×N significa "tenho mas é repetida",
-    // então remover a repetida deve resultar em "tenho (uma cópia)", não "não tenho".
-    const updated = { ...collection, [figurinhaId]: 'owned' } as UserCollection;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { [figurinhaId]: _, ...updatedQuantities } = quantities;
+    let updatedCollection: UserCollection;
+    let updatedQuantities: Record<string, number>;
+    let newStatus: StickerStatus;
+
+    if (currentQty > 1) {
+      // Decrementa: ainda é repetida, com uma cópia a menos
+      updatedCollection = collection;
+      updatedQuantities = { ...quantities, [figurinhaId]: currentQty - 1 };
+      newStatus = 'duplicate';
+    } else {
+      // Última cópia extra removida: volta para 'owned'
+      updatedCollection = { ...collection, [figurinhaId]: 'owned' };
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [figurinhaId]: _, ...rest } = quantities;
+      updatedQuantities = rest as Record<string, number>;
+      newStatus = 'owned';
+    }
 
     set({
-      collection: updated,
-      quantities: updatedQuantities as Record<string, number>,
+      collection: updatedCollection,
+      quantities: updatedQuantities,
       allCollections: activeUserAlbumId
-        ? { ...allCollections, [activeUserAlbumId]: updated }
+        ? { ...allCollections, [activeUserAlbumId]: updatedCollection }
         : allCollections,
     });
 
     try {
       if (activeUserAlbumId) {
         await Promise.all([
-          collectionService.save(updated, activeUserAlbumId),
-          quantitiesService.save(updatedQuantities as Record<string, number>, activeUserAlbumId),
+          collectionService.save(updatedCollection, activeUserAlbumId),
+          quantitiesService.save(updatedQuantities, activeUserAlbumId),
         ]);
       }
     } catch (error) {
@@ -260,7 +272,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
       return;
     }
 
-    if (activeUserAlbumId && syncUserId) {
+    if (activeUserAlbumId && syncUserId && newStatus === 'owned') {
       try {
         await cloudCollectionService.upsertOne(activeUserAlbumId, figurinhaId, 'owned', syncUserId);
       } catch (syncError) {
