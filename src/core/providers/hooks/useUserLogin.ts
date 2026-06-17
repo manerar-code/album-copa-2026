@@ -64,7 +64,16 @@ export function useUserLogin() {
 
       if (!isNewLogin) {
         if (cloudCount > 0 || localCount > 0) {
-          const merged = cloudCollectionService.merge(localCollection, cloudCollection);
+          // Local-wins merge: cloud fills gaps only; local always wins conflicts.
+          // Prevents stale cloud 'duplicate' from overwriting local 'owned' on every refresh.
+          const merged: UserCollection = {};
+          for (const [id, status] of Object.entries(cloudCollection)) {
+            if (status !== 'missing') merged[id] = status;
+          }
+          for (const [id, status] of Object.entries(localCollection)) {
+            if (status !== 'missing') merged[id] = status;
+            else delete merged[id];
+          }
           await store.applyCollection(merged);
           const mergedCount = Object.values(merged).filter(s => s !== 'missing').length;
           if (mergedCount > cloudCount) {

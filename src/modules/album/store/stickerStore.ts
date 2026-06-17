@@ -302,7 +302,7 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
           changed.push({ figurinhaId, status: 'owned' });
         }
       } else if (currentStatus === 'owned') {
-        newCollection[figurinhaId] = 'missing';
+        delete newCollection[figurinhaId]; // 'missing' = ausência da chave
         delete newQuantities[figurinhaId];
         changed.push({ figurinhaId, status: 'missing' });
       }
@@ -347,7 +347,15 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     const albumId = activeUserAlbumId;
     const userId = syncUserId;
     if (albumId && userId && changed.length > 0) {
-      if (useSyncStore.getState().status !== 'offline') {
+      if (useSyncStore.getState().status === 'offline') {
+        for (const { figurinhaId, status } of changed) {
+          if (status !== 'missing') {
+            await offlineQueueService
+              .enqueue({ userAlbumId: albumId, figurinhaId, status, createdAt: Date.now() })
+              .catch(() => {});
+          }
+        }
+      } else {
         try {
           await Promise.all(
             changed.map(({ figurinhaId, status }) =>
@@ -355,7 +363,14 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
             ),
           );
         } catch (syncError) {
-          logger.warn('registerTrade: cloud sync failed (will retry on reload)', syncError);
+          logger.warn('registerTrade: cloud sync failed — enqueueing for retry', syncError);
+          for (const { figurinhaId, status } of changed) {
+            if (status !== 'missing') {
+              await offlineQueueService
+                .enqueue({ userAlbumId: albumId, figurinhaId, status, createdAt: Date.now() })
+                .catch(() => {});
+            }
+          }
         }
       }
     }

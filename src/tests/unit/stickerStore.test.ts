@@ -404,18 +404,21 @@ describe('stickerStore', () => {
       expect(result.current.collection['fig-a']).toBe('owned');
     });
 
-    it('owned sent one → transitions to missing', async () => {
+    it('owned sent one → transitions to missing (key absent in collection)', async () => {
       useStickerStore.setState({ collection: { 'fig-a': 'owned' }, quantities: {} });
       const { result } = renderHook(() => useStickerStore());
       await act(() => result.current.registerTrade(['fig-a'], []));
-      expect(result.current.collection['fig-a']).toBe('missing');
+      // 'missing' is represented by the absence of the key, not an explicit value
+      expect(result.current.collection['fig-a']).toBeUndefined();
+      expect(result.current.getStatus('fig-a')).toBe('missing');
     });
 
     it('missing sent → no change (cannot send what you do not have)', async () => {
-      useStickerStore.setState({ collection: { 'fig-a': 'missing' }, quantities: {} });
+      useStickerStore.setState({ collection: {}, quantities: {} });
       const { result } = renderHook(() => useStickerStore());
       await act(() => result.current.registerTrade(['fig-a'], []));
-      expect(result.current.collection['fig-a']).toBe('missing');
+      expect(result.current.collection['fig-a']).toBeUndefined();
+      expect(result.current.getStatus('fig-a')).toBe('missing');
     });
 
     it('received missing → becomes owned', async () => {
