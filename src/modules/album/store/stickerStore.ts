@@ -232,7 +232,10 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
     const previousCollection = collection;
     const previousQuantities = quantities;
 
-    const updated = { ...collection, [figurinhaId]: 'missing' } as UserCollection;
+    // Remove o status de repetida mas mantém 'owned' — o usuário ainda tem a figurinha.
+    // Usar 'missing' aqui é errado: o badge ×N significa "tenho mas é repetida",
+    // então remover a repetida deve resultar em "tenho (uma cópia)", não "não tenho".
+    const updated = { ...collection, [figurinhaId]: 'owned' } as UserCollection;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [figurinhaId]: _, ...updatedQuantities } = quantities;
 
@@ -257,16 +260,9 @@ export const useStickerStore = create<CatalogState>((set, get) => ({
       return;
     }
 
-    // Sincroniza remoção com a nuvem — sem isso, ao retornar ao app o merge
-    // cloud reverte 'missing' para 'duplicate' pois duplicate tem prioridade maior.
     if (activeUserAlbumId && syncUserId) {
       try {
-        await cloudCollectionService.upsertOne(
-          activeUserAlbumId,
-          figurinhaId,
-          'missing',
-          syncUserId,
-        );
+        await cloudCollectionService.upsertOne(activeUserAlbumId, figurinhaId, 'owned', syncUserId);
       } catch (syncError) {
         logger.warn('resetSticker: cloud sync failed (will retry on reload)', syncError);
       }
